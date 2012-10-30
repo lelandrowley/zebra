@@ -1,3 +1,2 @@
-Maggie Jones
-& Leland Rowley made this cool app
+let's create a merge conflict
 
