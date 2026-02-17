@@ -1,0 +1,70 @@
+name: DVDScanner
+options:
+  bundleIdPrefix: com.yourname
+  deploymentTarget:
+    iOS: "16.0"
+    macOS: "13.0"
+  xcodeVersion: "15"
+  createIntermediateGroups: true
+
+packages:
+  DVDScannerCore:
+    path: .
+
+targets:
+
+  # ── iOS App ───────────────────────────────────────────────────────────────
+  DVDScanner-iOS:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    bundleId: com.yourname.dvdscanner
+    sources:
+      - Sources/DVDScannerApp
+    dependencies:
+      - package: DVDScannerCore
+    info:
+      path: SupportingFiles/Info-iOS.plist
+      properties:
+        UILaunchScreen: {}
+        NSCameraUsageDescription: "Used to photograph your DVDs"
+        NSPhotoLibraryUsageDescription: "Used to import photos of your DVDs"
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    settings:
+      PRODUCT_NAME: DVDScanner
+      SWIFT_VERSION: "5.9"
+      ENABLE_PREVIEWS: YES
+
+  # ── macOS App ─────────────────────────────────────────────────────────────
+  DVDScanner-macOS:
+    type: application
+    platform: macOS
+    deploymentTarget: "13.0"
+    bundleId: com.yourname.dvdscanner.mac
+    sources:
+      - Sources/DVDScannerApp
+    dependencies:
+      - package: DVDScannerCore
+    info:
+      path: SupportingFiles/Info-macOS.plist
+      properties:
+        NSPhotoLibraryUsageDescription: "Used to import photos of your DVDs"
+    settings:
+      PRODUCT_NAME: DVDScanner
+      SWIFT_VERSION: "5.9"
+      ENABLE_PREVIEWS: YES
+
+  # ── Unit Tests ────────────────────────────────────────────────────────────
+  DVDScannerTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - Tests/DVDScannerCoreTests
+    dependencies:
+      - package: DVDScannerCore
+    settings:
+      SWIFT_VERSION: "5.9"
