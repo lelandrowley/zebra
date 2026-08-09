@@ -16,6 +16,11 @@ import { initUI, MAX_DICE } from './ui.js';
 
 const STORE_KEY = 'fatewoven-v1';
 
+// Storage access THROWS in sandboxed iframes (artifact hosts, some embeds) —
+// every touch goes through these guards so the app still boots there.
+const storeGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const storeSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* opaque origin / private mode */ } };
+
 const defaults = () => ({
   loadout: { d4: 1, d6: 1, d8: 1, d10: 1, d12: 1, d20: 1 },
   styleId: 'amethyst',
@@ -27,7 +32,7 @@ const defaults = () => ({
 
 function loadState() {
   try {
-    const raw = JSON.parse(localStorage.getItem(STORE_KEY) ?? 'null');
+    const raw = JSON.parse(storeGet(STORE_KEY) ?? 'null');
     if (!raw) return defaults();
     const d = defaults();
     return {
@@ -42,7 +47,7 @@ function loadState() {
 }
 
 function saveState(state) {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch { /* private mode */ }
+  storeSet(STORE_KEY, JSON.stringify(state));
 }
 
 async function loadFonts() {
@@ -266,10 +271,10 @@ function boot() {
   buildDice();
   throwAll({ quiet: true, power: 0.55 });
 
-  if (!localStorage.getItem('fatewoven-greeted')) {
+  if (!storeGet('fatewoven-greeted')) {
     setTimeout(() => {
       ui.toast('Answer the three questions under Fate — your answers weave the dice’s destiny ✦', 6000);
-      try { localStorage.setItem('fatewoven-greeted', '1'); } catch { /* ok */ }
+      storeSet('fatewoven-greeted', '1');
     }, 1600);
   }
 
@@ -296,8 +301,15 @@ function boot() {
   };
 
   const timer = new THREE.Timer();
+  let lastTick = 0;
+
   function frame(now) {
+    lastTick = performance.now();
     requestAnimationFrame(frame);
+    step(now);
+  }
+
+  function step(now) {
     timer.update(now);
     const dt = Math.min(timer.getDelta(), 0.1);
     const t = timer.getElapsed();
@@ -322,6 +334,22 @@ function boot() {
     view.update(dt, t);
   }
   frame();
+
+  // Some sandboxed iframes (e.g. artifact hosts) park requestAnimationFrame
+  // entirely. If rAF goes silent while we're visible, drive frames on a timer.
+  // Two courtesies keep this from wedging the main thread: back off when a
+  // frame is expensive (software rasterizers), and stop entirely on unload so
+  // navigation tasks are never starved.
+  let watchdogBusyUntil = 0;
+  const watchdogId = setInterval(() => {
+    const now = performance.now();
+    if (now - lastTick <= 400 || now < watchdogBusyUntil) return;
+    if (document.visibilityState !== 'visible') return;
+    step(now);
+    const cost = performance.now() - now;
+    if (cost > 50) watchdogBusyUntil = performance.now() + cost * 6;
+  }, 33);
+  window.addEventListener('pagehide', () => clearInterval(watchdogId));
 }
 
 loadFonts().then(boot);
