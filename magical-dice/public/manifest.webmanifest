@@ -1,0 +1,15 @@
+{
+  "name": "Fatewoven — Dice of Destiny",
+  "short_name": "Fatewoven",
+  "description": "A magical 3D dice roller: real physics, gemstone dice, and fate woven from three questions.",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b0916",
+  "theme_color": "#0b0916",
+  "icons": [
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-1024.png", "sizes": "1024x1024", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

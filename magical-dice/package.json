@@ -1,0 +1,29 @@
+{
+  "name": "fatewoven-dice",
+  "version": "1.0.0",
+  "description": "A magical 3D dice roller — real physics, gemstone dice, fate woven from three questions.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "verify": "node scripts/verify.mjs",
+    "shots": "node scripts/shot.mjs && node scripts/shot-mobile.mjs",
+    "icons": "node scripts/gen-icons.mjs",
+    "ios": "vite build && cap sync ios && cap open ios"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.5.0",
+    "cannon-es": "^0.20.0",
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.0",
+    "playwright": "^1.62.1",
+    "vite": "^8.2.1",
+    "vite-plugin-singlefile": "^2.3.3"
+  }
+}

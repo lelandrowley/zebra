@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0916" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Fatewoven" />
+  <title>Fatewoven — Magical Dice</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="scene" aria-label="3D dice tray"></canvas>
+    <div id="vignette" aria-hidden="true"></div>
+
+    <!-- Projected per-die result chips live here -->
+    <div id="chips" aria-hidden="true"></div>
+
+    <header id="brand">
+      <h1><span class="star">✦</span> Fatewoven <span class="star">✦</span></h1>
+      <p class="tagline">dice of destiny</p>
+    </header>
+
+    <!-- Total + crit banner -->
+    <div id="verdict" class="hidden" role="status" aria-live="polite">
+      <div id="verdict-flourish"></div>
+      <div id="verdict-total">—</div>
+      <div id="verdict-label">total</div>
+    </div>
+
+    <!-- Roll controls -->
+    <div id="roll-bar">
+      <button id="roll-btn" title="Roll the dice (Space)">
+        <span class="rune-ring" aria-hidden="true"></span>
+        <span class="roll-label">Roll</span>
+      </button>
+      <div id="loadout-summary" aria-live="polite"></div>
+    </div>
+
+    <!-- Chronicle (history) -->
+    <aside id="chronicle" aria-label="Roll history">
+      <h2>Chronicle</h2>
+      <ol id="chronicle-list"></ol>
+    </aside>
+
+    <!-- Settings drawer -->
+    <button id="panel-toggle" aria-expanded="true" aria-controls="panel" title="Open settings">
+      <span class="gear">⚙</span>
+    </button>
+    <aside id="panel">
+      <nav id="tabs" role="tablist">
+        <button class="tab active" role="tab" data-tab="dice" aria-selected="true">Dice</button>
+        <button class="tab" role="tab" data-tab="style" aria-selected="false">Style</button>
+        <button class="tab" role="tab" data-tab="type" aria-selected="false">Type</button>
+        <button class="tab" role="tab" data-tab="fate" aria-selected="false">Fate</button>
+      </nav>
+
+      <section class="tab-page active" id="page-dice" role="tabpanel">
+        <h3>Choose your dice</h3>
+        <div id="loadout"></div>
+        <h4>Quick hands</h4>
+        <div id="presets" class="chip-row"></div>
+        <p class="hint" id="dice-cap-hint"></p>
+      </section>
+
+      <section class="tab-page" id="page-style" role="tabpanel">
+        <h3>Dice of…</h3>
+        <div id="styles" class="swatch-grid"></div>
+        <label class="row toggle-row"><input type="checkbox" id="opt-motley" />
+          <span>Motley set <em>— every die a different stone</em></span></label>
+      </section>
+
+      <section class="tab-page" id="page-type" role="tabpanel">
+        <h3>Numerals</h3>
+        <div class="type-preview-wrap"><canvas id="type-preview" width="220" height="110"></canvas></div>
+        <label class="row">Script
+          <select id="opt-font"></select>
+        </label>
+        <label class="row">Size
+          <input type="range" id="opt-size" min="60" max="120" value="92" />
+        </label>
+        <label class="row">Ink
+          <div id="ink-swatches" class="chip-row"></div>
+        </label>
+        <label class="row toggle-row"><input type="checkbox" id="opt-bold" /><span>Heavier hand</span></label>
+        <label class="row toggle-row"><input type="checkbox" id="opt-glow" checked /><span>Numerals glow</span></label>
+        <label class="row toggle-row"><input type="checkbox" id="opt-underline" checked /><span>Mark 6 &amp; 9</span></label>
+      </section>
+
+      <section class="tab-page" id="page-fate" role="tabpanel">
+        <h3>The Ritual of Seeds</h3>
+        <p class="hint">Answer truthfully. Your answers are woven into the thread of chance —
+          the same three answers always weave the same fate.</p>
+        <label class="row col">How many lights shine in your room?
+          <input type="text" id="seed-1" placeholder="e.g. 3, or ‘too many’" autocomplete="off" />
+        </label>
+        <label class="row col">What did you eat for lunch?
+          <input type="text" id="seed-2" placeholder="e.g. cold pizza" autocomplete="off" />
+        </label>
+        <label class="row col">Whisper a word of power
+          <input type="text" id="seed-3" placeholder="e.g. zebra" autocomplete="off" />
+        </label>
+        <button id="weave-btn">Weave fate</button>
+        <div id="sigil" title="Your fate sigil — a fingerprint of your three answers"></div>
+        <label class="row toggle-row"><input type="checkbox" id="opt-sound" checked /><span>Sounds of the table</span></label>
+      </section>
+    </aside>
+
+    <div id="toast" class="hidden" role="status"></div>
+
+    <noscript><div class="fallback">Fatewoven needs JavaScript (and WebGL) to conjure its dice.</div></noscript>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

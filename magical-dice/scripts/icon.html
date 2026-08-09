@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="file:///home/user/zebra/magical-dice/src/fonts.css">
+<style>
+  html, body { margin: 0; height: 100%; }
+  body { display: grid; place-items: center; background: #000; }
+  #icon {
+    position: relative;
+    width: 100vmin; height: 100vmin;
+    background:
+      radial-gradient(circle at 50% 36%, #3b2a6e 0%, #1c1340 46%, #0b0916 100%);
+    overflow: hidden;
+    font-family: 'Cinzel', serif;
+  }
+  /* faint star specks */
+  .star { position: absolute; border-radius: 50%; background: #fff; }
+  svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .num {
+    position: absolute; left: 50%; top: 51.5%;
+    transform: translate(-50%, -50%);
+    font-size: 21vmin; font-weight: 700; color: #ffe3a1;
+    text-shadow: 0 0 5vmin rgba(232,197,106,.75), 0 0 1.2vmin rgba(255,227,161,.9);
+  }
+  .glowring {
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 52%, transparent 40%, rgba(138,92,246,0.16) 62%, transparent 78%);
+  }
+</style>
+</head>
+<body>
+<div id="icon">
+  <div class="glowring"></div>
+  <svg viewBox="0 0 100 100">
+    <g fill="none" stroke="#e8c56a" stroke-width="1.35" stroke-linejoin="round"
+       style="filter: drop-shadow(0 0 1.6px rgba(232,197,106,.9)) drop-shadow(0 0 5px rgba(232,197,106,.45));">
+      <!-- d20 silhouette: hexagon + inscribed upward triangle + connecting facets -->
+      <polygon points="50,7 87.2,28.5 87.2,71.5 50,93 12.8,71.5 12.8,28.5"/>
+      <polygon points="50,26 71.6,63.5 28.4,63.5"/>
+      <line x1="50" y1="7"  x2="50"   y2="26"/>
+      <line x1="87.2" y1="28.5" x2="71.6" y2="63.5"/>
+      <line x1="12.8" y1="28.5" x2="28.4" y2="63.5"/>
+      <line x1="87.2" y1="71.5" x2="71.6" y2="63.5"/>
+      <line x1="12.8" y1="71.5" x2="28.4" y2="63.5"/>
+      <line x1="50" y1="93" x2="50" y2="63.5"/>
+      <line x1="50" y1="26" x2="87.2" y2="28.5"/>
+      <line x1="50" y1="26" x2="12.8" y2="28.5"/>
+      <line x1="50" y1="93" x2="71.6" y2="63.5" opacity="0"/>
+    </g>
+  </svg>
+  <div class="num" id="numeral">20</div>
+</div>
+<script>
+  const icon = document.getElementById('icon');
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 42; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = 0.15 + rnd() * 0.4;
+    s.style.width = s.style.height = size + 'vmin';
+    s.style.left = (rnd() * 100) + 'vmin';
+    s.style.top = (rnd() * 100) + 'vmin';
+    s.style.opacity = 0.25 + rnd() * 0.55;
+    icon.appendChild(s);
+  }
+  // splash mode: hide the numeral ring, shrink motif, add wordmark
+  if (location.hash === '#splash') {
+    document.querySelector('svg').style.inset = '31%';
+    document.querySelector('svg').style.width = '38%';
+    document.querySelector('svg').style.height = '38%';
+    const n = document.getElementById('numeral');
+    n.style.fontSize = '8vmin';
+    n.style.top = '50%';
+    const w = document.createElement('div');
+    w.textContent = 'FATEWOVEN';
+    w.style.cssText = 'position:absolute;left:50%;top:72%;transform:translateX(-50%);' +
+      'font-size:4.6vmin;letter-spacing:1.6vmin;color:#e8c56a;padding-left:1.6vmin;' +
+      'text-shadow:0 0 2vmin rgba(232,197,106,.5)';
+    icon.appendChild(w);
+  }
+</script>
+</body>
+</html>
