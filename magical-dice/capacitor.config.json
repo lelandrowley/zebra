@@ -1,0 +1,13 @@
+{
+  "appId": "com.kinsort.fatewoven",
+  "appName": "Fatewoven",
+  "webDir": "dist",
+  "backgroundColor": "#0b0916",
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false,
+    "backgroundColor": "#0b0916",
+    "preferredContentMode": "mobile",
+    "allowsLinkPreview": false
+  }
+}
