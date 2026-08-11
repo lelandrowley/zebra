@@ -158,6 +158,61 @@ function concentricArcs(ctx, S, rand, colors, cx, cy, count, alpha) {
   ctx.restore();
 }
 
+function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/**
+ * Hard-edged Voronoi colour cells — bold faceted wedges meeting at crisp
+ * boundaries, for when `blobs`' soft radial falloff is the wrong look (the
+ * dichroic-glass signature). Computed at reduced resolution and scaled up,
+ * both for speed (this file repaints its base pattern once per face) and
+ * because the light upscale blur reads as a clean facet edge rather than a
+ * harsh pixel stairstep. `alpha < 1` blends the cells over whatever is
+ * already on the canvas instead of replacing it outright.
+ */
+function facets(ctx, S, rand, colors, count, alpha = 1) {
+  const N = 96;
+  const small = makeCanvas(N);
+  const sctx = small.getContext('2d');
+  const img = sctx.createImageData(N, N);
+  const data = img.data;
+  // Shuffle-then-cycle instead of an independent random pick per cell: with a
+  // handful of cells and a handful of colors, picking each cell's color
+  // independently often skips one or two hues entirely (and since this is a
+  // fixed per-style seed, that's not a fluke that self-corrects on reroll —
+  // it's stuck that way). Cycling a shuffled palette guarantees every hue
+  // shows up before any repeats.
+  const palette = colors.slice();
+  for (let i = palette.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [palette[i], palette[j]] = [palette[j], palette[i]];
+  }
+  const seeds = [];
+  for (let i = 0; i < count; i++) {
+    seeds.push({ x: rand() * N, y: rand() * N, rgb: hexToRgb(palette[i % palette.length]) });
+  }
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      let best = 0, bestDist = Infinity;
+      for (let i = 0; i < seeds.length; i++) {
+        const dx = x - seeds[i].x, dy = y - seeds[i].y;
+        const dist = dx * dx + dy * dy;
+        if (dist < bestDist) { bestDist = dist; best = i; }
+      }
+      const idx = (y * N + x) * 4;
+      const [r, g, b] = seeds[best].rgb;
+      data[idx] = r; data[idx + 1] = g; data[idx + 2] = b; data[idx + 3] = 255;
+    }
+  }
+  sctx.putImageData(img, 0, 0);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(small, 0, 0, S, S);
+  ctx.restore();
+}
+
 // --- style presets ----------------------------------------------------------
 // mat: MeshPhysicalMaterial params. pattern: albedo tile. emissivePattern: glow tile.
 // ink/glow: default numeral colors chosen for contrast on this stone.
@@ -174,6 +229,62 @@ const gemPattern = (inner, outer, streakColor, streakAlpha = 0.09, blobAlpha = 0
   streaks(ctx, S, r, streakColor, 7, streakAlpha);
   blobs(ctx, S, r, ['#ffffff'], 4, 10, 34, blobAlpha);
 };
+
+// "Infused" gems: clear faceted stones with light held inside — a bright
+// emissive core (via gradientBase on the emissive canvas) that reads as
+// concentrated at the centre of each face and falls off toward the edges,
+// over a glassy, moderately transmissive body. One shared recipe below,
+// tuned per hue, so the family reads as a set. `living: true` marks them for
+// the slow breathing pulse driven by tickInfusedGlow() at the bottom of this
+// file. Numeral ink stays dark/engraved on purpose — see paintFace's
+// isLight() gate — so numerals read as carved rather than lit from within.
+const infusedGem = (hue, over = {}) => ({
+  id: hue.id, name: hue.name, kind: 'gem', swatch: hue.swatch,
+  ink: hue.ink, glow: hue.core, emissiveBase: hue.dim, living: true,
+  mat: gem({
+    color: hue.color, attenuationColor: hue.attenuation,
+    roughness: 0.045, transmission: 0.88, thickness: 1.05,
+    attenuationDistance: 3.2, clearcoat: 0.5, clearcoatRoughness: 0.06,
+    dispersion: 0.18, emissiveIntensity: 1.6, ...over,
+  }),
+  pattern: gemPattern(hue.patternPale, hue.patternMid, '#ffffff', 0.08, 0.05),
+  emissivePattern: (ctx, S, r) => gradientBase(ctx, S, hue.core, 'rgba(0,0,0,0)'),
+});
+
+const INFUSED = [
+  infusedGem({
+    id: 'emberheart', name: 'Emberheart', swatch: ['#ff8a42', '#7a1806'],
+    color: '#e8622a', attenuation: '#7a1806', patternPale: '#ffcf9e', patternMid: '#ff7a2e',
+    core: '#ff5219', dim: '#2c0c04', ink: '#2a0e04',
+  }),
+  infusedGem({
+    id: 'lumenglass', name: 'Lumenglass', swatch: ['#eaf8ff', '#6fa8cc'],
+    color: '#eef8ff', attenuation: '#a8d8f0', patternPale: '#ffffff', patternMid: '#cdeeff',
+    // core stays a clear pale blue rather than near-white: at this style's
+    // brightness even a little further toward white clips to a featureless
+    // bloom blob under the scene's tonemapping (see dichroic's comment above).
+    core: '#a8ddff', dim: '#132635', ink: '#173040',
+  }, { emissiveIntensity: 0.85, transmission: 0.92, attenuationDistance: 4.0 }),
+  infusedGem({
+    id: 'duskfire', name: 'Duskfire', swatch: ['#e585ff', '#4a0e6e'],
+    color: '#b048d8', attenuation: '#5a0f80', patternPale: '#f6ddff', patternMid: '#d968ff',
+    core: '#e034ff', dim: '#22043a', ink: '#230430',
+  }),
+  infusedGem({
+    id: 'tidecore', name: 'Tidecore', swatch: ['#5fd0ff', '#0a2a6e'],
+    color: '#1f96d8', attenuation: '#0e2f7a', patternPale: '#cdeeff', patternMid: '#4fc0ff',
+    core: '#22b8ff', dim: '#04122c', ink: '#04122c',
+  }),
+  infusedGem({
+    id: 'vinelight', name: 'Vinelight', swatch: ['#8fff7a', '#0e5a1c'],
+    color: '#3fbf50', attenuation: '#125c1a', patternPale: '#ddffd0', patternMid: '#6be05a',
+    core: '#4dff3e', dim: '#062408', ink: '#062408',
+  }),
+];
+
+// Deep blue, magenta, emerald, yellow, orange-red, cyan — bold saturated
+// blocks meeting at hard edges, the real-dichroic-glass reference photo.
+const DICHROIC_COLORS = ['#1c3fe8', '#e0189c', '#12d17a', '#f5d51a', '#ff4d1f', '#18d8e8'];
 
 export const STYLES = [
   {
@@ -213,23 +324,33 @@ export const STYLES = [
     pattern: (ctx, S, r) => { gradientBase(ctx, S, '#3a2f4e', '#120c1e'); streaks(ctx, S, r, '#8f7bb8', 6, 0.12); },
   },
   {
-    id: 'dichroic', name: 'Dichroic', kind: 'gem', swatch: ['#8ff0e0', '#c060e0'],
-    ink: '#26264a', glow: '#c9f7ff', emissiveBase: '#123044',
+    id: 'dichroic', name: 'Dichroic', kind: 'gem', swatch: ['#5ff0ff', '#a020c8'],
+    ink: '#f2c860', glow: '#ffe9b0', emissiveBase: '#0c0f1a',
     // Dichroic glass reads as lit from within. The vault is dark, so a die at
-    // 0.96 transmission just transmits the darkness — hence the moderated
-    // transmission, the emissive rainbow film, and the lifted env intensity.
+    // high transmission just transmits the darkness — that's why the color
+    // comes mostly from the emissive rainbow film (hard-edged facets, at full
+    // strength) rather than from transmission, which stays moderate here and
+    // mainly contributes clarity/refraction. The albedo pattern repeats the
+    // same facets at lower alpha over a pale base, so the body still reads
+    // colorful even where the emissive glow is dim.
+    // emissiveIntensity is deliberately modest: scene.js runs ACESFilmicToneMapping
+    // plus an UnrealBloomPass at threshold 0.83, and this file repaints its
+    // pattern at full canvas resolution — push the emissive past that
+    // threshold and the bloom blur homogenizes every hard facet edge into a
+    // pale wash (that was the second failure mode here, after the all-black
+    // one). Fewer, bigger facets (6, one per hue) survive that blur too.
     mat: {
-      color: '#dff4f2', metalness: 0, roughness: 0.05, transmission: 0.72, ior: 1.6, thickness: 0.9,
-      clearcoat: 1, clearcoatRoughness: 0.05, iridescence: 1.0, iridescenceIOR: 1.8,
-      iridescenceThicknessRange: [140, 800], dispersion: 0.2, envMapIntensity: 2.0,
-      attenuationColor: '#d99ae8', attenuationDistance: 6.0, emissiveIntensity: 0.9,
+      color: '#e8eef0', metalness: 0, roughness: 0.05, transmission: 0.65, ior: 1.65, thickness: 1.0,
+      clearcoat: 1, clearcoatRoughness: 0.04, iridescence: 1.0, iridescenceIOR: 1.9,
+      iridescenceThicknessRange: [100, 1000], dispersion: 0.22, envMapIntensity: 1.6,
+      attenuationColor: '#ffffff', attenuationDistance: 6.0, emissiveIntensity: 1.0,
     },
     pattern: (ctx, S, r) => {
-      gradientBase(ctx, S, '#fbfffe', '#dcefee');
-      blobs(ctx, S, r, ['#ff8fe0', '#7fe8e0', '#ffe08a', '#9fb0ff'], 24, 14, 48, 0.3);
+      gradientBase(ctx, S, '#fbfffe', '#eef7f6');
+      facets(ctx, S, r, DICHROIC_COLORS, 6, 0.6);
     },
     emissivePattern: (ctx, S, r) => {
-      blobs(ctx, S, r, ['#7a1f6a', '#125a56', '#6a4a12', '#243a7a'], 22, 16, 54, 0.55);
+      facets(ctx, S, r, DICHROIC_COLORS, 6, 1.0);
     },
   },
   {
@@ -427,6 +548,7 @@ export const STYLES = [
     mat: { color: '#efe6cf', metalness: 0, roughness: 0.5, clearcoat: 0.15, envMapIntensity: 0.6 },
     pattern: (ctx, S, r) => { gradientBase(ctx, S, '#faf5e6', '#dfd2b2'); streaks(ctx, S, r, '#b8a780', 8, 0.15); },
   },
+  ...INFUSED,
 ];
 
 export const styleById = (id) => STYLES.find((s) => s.id === id) ?? STYLES[0];
@@ -536,8 +658,15 @@ function materialFor(style, typo, faceInfo, dieType) {
 
   const m = new THREE.MeshPhysicalMaterial(params);
   if (p.dispersion !== undefined && 'dispersion' in m) m.dispersion = p.dispersion;
+  if (style.living && params.emissiveMap) {
+    m.userData.baseEmissiveIntensity = m.emissiveIntensity;
+    livingMaterials.add(m);
+  }
   return m;
 }
+
+/** Materials of `living: true` styles (the infused gems) — see tickInfusedGlow. */
+const livingMaterials = new Set();
 
 const matCache = new Map();
 
@@ -561,6 +690,21 @@ export function clearMaterialCache() {
     }
   }
   matCache.clear();
+  livingMaterials.clear();
+}
+
+/**
+ * Slow breathing pulse for the infused gems' captured light: modulates each
+ * living material's emissiveIntensity around its own base value with a
+ * ~0.4 Hz sine, roughly ±15%. `t` is elapsed seconds (e.g. THREE.Timer's
+ * getElapsed()). Call this once per frame; a no-op if nothing living is cached.
+ */
+export function tickInfusedGlow(t) {
+  if (livingMaterials.size === 0) return;
+  const mod = 1 + 0.15 * Math.sin(2 * Math.PI * 0.4 * t);
+  for (const m of livingMaterials) {
+    m.emissiveIntensity = m.userData.baseEmissiveIntensity * mod;
+  }
 }
 
 /** Small canvas swatch of a style's stone, for UI buttons. */
