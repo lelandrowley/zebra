@@ -8,6 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "verify": "node scripts/verify.mjs",
+    "containment": "node scripts/verify-containment.mjs",
+    "audition": "node scripts/audition.mjs",
     "shots": "node scripts/shot.mjs && node scripts/shot-mobile.mjs",
     "icons": "node scripts/gen-icons.mjs",
     "ios": "vite build && cap sync ios && cap open ios"

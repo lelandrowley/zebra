@@ -6,13 +6,18 @@ via Capacitor. Web source in `src/`, native project in `ios/`.
 ## Commands
 
 ```bash
-npm run dev      # dev server (localhost:5173)
-npm run build    # single self-contained dist/index.html
-npm run verify   # determinism + settle checks — run this after physics/RNG edits
-npm run shots    # headless screenshot tour -> shots/
-npm run icons    # re-render app icon + splash from scripts/icon.html
-npm run ios      # build + sync + open Xcode (macOS only)
+npm run dev         # dev server (localhost:5173)
+npm run build       # single self-contained dist/index.html
+npm run verify      # determinism + settle checks — run this after physics/RNG edits
+npm run containment # dice-stay-in-the-tray check — also run this after physics edits
+npm run audition    # render the table sounds to WAVs you can listen to (needs dev up)
+npm run shots       # headless screenshot tour -> shots/
+npm run icons       # re-render app icon + splash from scripts/icon.html
+npm run ios         # build + sync + open Xcode (macOS only)
 ```
+
+`verify` needs a browser; `containment` is physics-only and runs 300 rolls in
+seconds, so reach for it first when tuning the tray.
 
 Requires Node 20.19+ or 22+. The headless harness needs a Chromium once:
 `npx playwright install chromium` (or set `CHROMIUM_PATH` to an existing one).
@@ -50,7 +55,22 @@ Requires Node 20.19+ or 22+. The headless harness needs a Chromium once:
 4. **Dice need rolling resistance.** `applyFelt()` in `physics.js` is not
    decoration — rigid-body sims have none, so round dice orbit the tray
    forever without it. Tune carefully and re-run `verify`.
-5. **Sandboxed embeds are a supported target.** `localStorage` access must stay
+5. **Dice must not leave the tray, and the walls alone won't hold them.**
+   Two things keep them in, both proven by `npm run containment`:
+   * `throwFrom` takes ONE `baseAngle` per throw, drawn by the caller. Draw it
+     per-die instead and the dice spawn interpenetrating (191 of 200 rolls),
+     the solver ejects them at 4x throw speed, and they leave the dish.
+   * `applyContainment()` in `physics.js`. cannon-es generates
+     convex-polyhedron-vs-box contacts unreliably once dice stack against the
+     wall, so they creep through it at ordinary speeds — no amount of wall
+     height or thickness fixes that. Like `applyFelt`, it runs inside the
+     fixed step, so it must stay free of wall-clock and `Math.random`.
+6. **Impact sounds are modal.** `audio.js` builds each clack from damped
+   sinusoids at inharmonic ratios, because that spread is what the ear reads
+   as material. Broadband filtered noise reads as hiss and a falling sine
+   reads as a drum — that was the first version, and it sounded cheap.
+   `npm run audition` renders the sounds to WAV so you can check by ear.
+7. **Sandboxed embeds are a supported target.** `localStorage` access must stay
    guarded (it throws on opaque origins) and the rAF watchdog in `main.js`
    must survive — some hosts park `requestAnimationFrame` entirely.
    `node scripts/probe-sandbox.mjs` reproduces that environment.
