@@ -60,20 +60,30 @@ export class Die {
     return this.body.sleepState === CANNON.Body.SLEEPING;
   }
 
-  /** Place + hurl the die. All randomness drawn from the fate stream. */
-  throwFrom(fate, index, count, trayRadius) {
+  /**
+   * Place + hurl the die. All randomness drawn from the fate stream.
+   *
+   * `baseAngle` is drawn ONCE per throw by the caller and shared by every die.
+   * It must not be drawn here: a per-die base angle randomises each die's slot
+   * independently, which piles dice on top of each other at spawn. Overlapping
+   * spawns make the solver eject them at many times the throw speed, and they
+   * leave the tray.
+   */
+  throwFrom(fate, index, count, trayRadius, baseAngle) {
     const body = this.body;
     body.wakeUp();
     this.nudges = 0;
     this.lastValue = null;
 
-    // Enter from around the rim, spread out so dice don't clump or overlap.
-    const baseAngle = fate.next() * Math.PI * 2;
-    const angle = baseAngle + (index / Math.max(count, 1)) * Math.PI * 1.7 + fate.range(-0.25, 0.25);
-    const rr = trayRadius * fate.range(0.6, 0.85);
+    // An even fan around the rim. The jitter has to stay small enough that
+    // neighbouring slots can never close to within a die's width.
+    const angle = baseAngle + (index / Math.max(count, 1)) * Math.PI * 2 + fate.range(-0.08, 0.08);
+    const rr = trayRadius * fate.range(0.72, 0.92);
     body.position.set(
       Math.cos(angle) * rr,
-      2.1 + index * 0.55 + fate.next() * 0.4,
+      // Alternate dice ride higher, for a cascading pour. The ring already
+      // separates them, so this stagger stays small.
+      2.1 + (index % 2) * 0.95 + fate.next() * 0.3,
       Math.sin(angle) * rr,
     );
 

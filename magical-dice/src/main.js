@@ -4,7 +4,7 @@
 import './style.css';
 import * as THREE from 'three';
 import { createScene } from './scene.js';
-import { createPhysics, applyFelt, TRAY_RADIUS } from './physics.js';
+import { createPhysics, applyFelt, applyContainment, TRAY_RADIUS } from './physics.js';
 import { Die } from './dice/die.js';
 import { STYLES, styleById, clearMaterialCache } from './dice/materials.js';
 import { typoKeyOf } from './dice/faces.js';
@@ -28,6 +28,7 @@ const defaults = () => ({
   typo: { font: 'cinzel', size: 92, bold: false, ink: 'auto', glow: true, underline: true },
   seeds: ['', '', ''],
   sound: true,
+  wisps: false,
 });
 
 function loadState() {
@@ -76,6 +77,7 @@ function boot() {
   }
 
   const state = loadState();
+  view.setWisps(state.wisps);
   const physics = createPhysics();
   const fate = new Fate();
   fate.weave(...state.seeds);
@@ -138,8 +140,10 @@ function boot() {
     ui.hideVerdict();
     ui.setRolling(true);
     view.setRolling(true);
+    // One base angle for the whole throw — see Die.throwFrom.
+    const baseAngle = fate.next() * Math.PI * 2;
     dice.forEach((die, i) => {
-      die.throwFrom(fate, i, dice.length, TRAY_RADIUS * 0.8);
+      die.throwFrom(fate, i, dice.length, TRAY_RADIUS * 0.8, baseAngle);
       if (power !== 1) {
         die.body.velocity.scale(power, die.body.velocity);
         die.body.angularVelocity.scale(power, die.body.angularVelocity);
@@ -262,6 +266,10 @@ function boot() {
       audio.setMuted(!state.sound);
       if (state.sound) audio.unlockAudio();
     },
+    onWispsToggle() {
+      saveState(state);
+      view.setWisps(state.wisps);
+    },
   });
 
   ui.setSigil(fate.sigil());
@@ -285,8 +293,13 @@ function boot() {
       sleep: ['awake', 'sleepy', 'asleep'][d.body.sleepState],
       v: d.body.velocity.length(),
       w: d.body.angularVelocity.length(),
+      x: d.body.position.x,
       y: d.body.position.y,
+      z: d.body.position.z,
     })),
+    /** Radial distance of the die furthest from the tray centre. */
+    maxRadius: () => dice.reduce((m, d) =>
+      Math.max(m, Math.hypot(d.body.position.x, d.body.position.z)), 0),
     asleep: () => dice.length > 0 && dice.every((d) => d.sleeping),
     rolling: () => rolling,
     values: () => dice.map((d) => d.lastValue),
@@ -315,7 +328,10 @@ function boot() {
     const t = timer.getElapsed();
 
     simSteps += physics.step(dt, () => {
-      for (const die of dice) applyFelt(die.body, die.def.radius);
+      for (const die of dice) {
+        applyFelt(die.body, die.def.radius);
+        applyContainment(die.body, die.def.radius);
+      }
     });
     for (const die of dice) die.syncVisual();
 
