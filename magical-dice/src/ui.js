@@ -42,6 +42,7 @@ export function initUI(state, handlers) {
     capHint: $('#dice-cap-hint'),
     styles: $('#styles'),
     motley: $('#opt-motley'),
+    wisps: $('#opt-wisps'),
     font: $('#opt-font'),
     size: $('#opt-size'),
     bold: $('#opt-bold'),
@@ -166,6 +167,12 @@ export function initUI(state, handlers) {
     state.motley = els.motley.checked;
     renderSummary();
     handlers.onStyleChange();
+  });
+
+  els.wisps.checked = state.wisps;
+  els.wisps.addEventListener('change', () => {
+    state.wisps = els.wisps.checked;
+    handlers.onWispsToggle();
   });
 
   // ---- typography ----------------------------------------------------------

@@ -213,12 +213,28 @@ export function createScene(canvas) {
   pool.position.y = 0.015;
   scene.add(pool);
 
+  // Visible dish wall — an open cylinder standing up from the tray floor, so
+  // the dish reads as something that can actually hold the dice. The physics
+  // wall (invisible, see physics.js) sits inside this at r = TRAY_RADIUS, so
+  // dice never visually clip through it.
+  const dishWallHeight = 1.15;
+  const dishWall = new THREE.Mesh(
+    new THREE.CylinderGeometry(TRAY_RADIUS + 0.62, TRAY_RADIUS + 0.62, dishWallHeight, 72, 1, true),
+    new THREE.MeshStandardMaterial({
+      color: 0x2c2150, roughness: 0.3, metalness: 0.5, envMapIntensity: 1.0, side: THREE.DoubleSide,
+    }),
+  );
+  dishWall.position.y = dishWallHeight / 2;
+  dishWall.castShadow = true;
+  dishWall.receiveShadow = true;
+  scene.add(dishWall);
+
   const rimTorus = new THREE.Mesh(
     new THREE.TorusGeometry(TRAY_RADIUS + 0.62, 0.3, 20, 96),
     new THREE.MeshStandardMaterial({ color: 0x2c2150, roughness: 0.24, metalness: 0.55, envMapIntensity: 1.15 }),
   );
   rimTorus.rotation.x = Math.PI / 2;
-  rimTorus.position.y = 0.12;
+  rimTorus.position.y = dishWallHeight; // rolled lip sitting atop the dish wall
   rimTorus.castShadow = true;
   rimTorus.receiveShadow = true;
   scene.add(rimTorus);
@@ -335,6 +351,7 @@ export function createScene(canvas) {
   let rollingTarget = 0;
   let bloomOn = quality !== 'low';
   let slowFrames = 0;
+  let wispsOn = true;
   const pointer = { x: 0, y: 0 };
   window.addEventListener('pointermove', (e) => {
     pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -369,16 +386,18 @@ export function createScene(canvas) {
     sigil.material.opacity = 0.1 + Math.sin(t * 0.7 + 1) * 0.04 + rolling * 0.22;
 
     // wisps
-    const wspeed = 1 + rolling * 2.2;
-    for (const w of wisps) {
-      const a = w.phase + t * w.speed * wspeed;
-      w.group.position.set(
-        Math.cos(a) * w.r,
-        w.h + Math.sin(t * w.bob + w.phase) * 0.55,
-        Math.sin(a) * w.r,
-      );
-      const flicker = 12 + Math.sin(t * 7 + w.phase * 9) * 2.5 + rolling * 8;
-      w.group.children[0].intensity = flicker;
+    if (wispsOn) {
+      const wspeed = 1 + rolling * 2.2;
+      for (const w of wisps) {
+        const a = w.phase + t * w.speed * wspeed;
+        w.group.position.set(
+          Math.cos(a) * w.r,
+          w.h + Math.sin(t * w.bob + w.phase) * 0.55,
+          Math.sin(a) * w.r,
+        );
+        const flicker = 12 + Math.sin(t * 7 + w.phase * 9) * 2.5 + rolling * 8;
+        w.group.children[0].intensity = flicker;
+      }
     }
 
     // dust twinkle + rise
@@ -433,6 +452,10 @@ export function createScene(canvas) {
     spawnSparks,
     burst(pos, colorHex) { spawnSparks(pos, colorHex, 26, 2.6, 2.6); },
     setRolling(b) { rollingTarget = b ? 1 : 0; },
+    setWisps(on) {
+      wispsOn = on;
+      for (const w of wisps) w.group.visible = on;
+    },
     update,
     resize,
     /** world position -> css pixel coords */
