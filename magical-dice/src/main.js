@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { createScene } from './scene.js';
 import { createPhysics, applyFelt, applyContainment, TRAY_RADIUS } from './physics.js';
 import { Die } from './dice/die.js';
-import { STYLES, styleById, clearMaterialCache } from './dice/materials.js';
+import { STYLES, styleById, clearMaterialCache, tickInfusedGlow } from './dice/materials.js';
 import { typoKeyOf } from './dice/faces.js';
 import { DIE_TYPES, DIE_SCALE } from './dice/geometry.js';
 import { Fate } from './rng.js';
@@ -25,7 +25,7 @@ const defaults = () => ({
   loadout: { d4: 1, d6: 1, d8: 1, d10: 1, d12: 1, d20: 1 },
   styleId: 'amethyst',
   motley: false,
-  typo: { font: 'cinzel', size: 92, bold: false, ink: 'auto', glow: true, underline: true },
+  typo: { font: 'cinzel', size: 92, bold: false, ink: 'auto', glow: true, underline: true, motif: 'none' },
   seeds: ['', '', ''],
   sound: true,
   wisps: false,
@@ -339,6 +339,10 @@ function boot() {
       const allAsleep = dice.every((d) => d.sleeping);
       if (allAsleep || simSteps > rollDeadlineStep) settle();
     }
+
+    // The infused gems breathe. Cosmetic and time-driven, so it never touches
+    // the fate stream or the fixed physics step.
+    tickInfusedGlow(t);
 
     // keep result chips pinned above their dice
     for (const { die, chip } of activeChips) {

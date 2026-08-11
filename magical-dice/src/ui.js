@@ -2,7 +2,7 @@
 // verdict, chips, chronicle, toast. Pure view layer — main.js owns the loop.
 
 import { STYLES, styleById, styleSwatchURL } from './dice/materials.js';
-import { FONTS, INKS, fontById } from './dice/faces.js';
+import { FONTS, INKS, fontById, MOTIFS, motifById } from './dice/faces.js';
 import { DIE_TYPES } from './dice/geometry.js';
 
 const $ = (sel) => document.querySelector(sel);
@@ -44,6 +44,7 @@ export function initUI(state, handlers) {
     motley: $('#opt-motley'),
     wisps: $('#opt-wisps'),
     font: $('#opt-font'),
+    motif: $('#opt-motif'),
     size: $('#opt-size'),
     bold: $('#opt-bold'),
     glow: $('#opt-glow'),
@@ -179,6 +180,8 @@ export function initUI(state, handlers) {
 
   els.font.innerHTML = FONTS.map((f) => `<option value="${f.id}">${f.name}</option>`).join('');
   els.font.value = state.typo.font;
+  els.motif.innerHTML = MOTIFS.map((m) => `<option value="${m.id}">${m.name}</option>`).join('');
+  els.motif.value = state.typo.motif;
   els.size.value = state.typo.size;
   els.bold.checked = state.typo.bold;
   els.glow.checked = state.typo.glow;
@@ -233,6 +236,23 @@ export function initUI(state, handlers) {
       const w = ctx.measureText('6').width;
       ctx.fillRect(W * 0.84 - w * 0.4, y + px * 0.46, w * 0.8, Math.max(2, px * 0.06));
     }
+
+    const motif = motifById(state.typo.motif);
+    if (motif.draw) {
+      const ms = 24 * Math.min(1.15, state.typo.size / 100);
+      const my = Math.min(H - ms * 0.5 - 6, y + px * 0.58 + 12);
+      ctx.save();
+      ctx.translate(W * 0.52, my);
+      if (state.typo.glow) {
+        ctx.shadowColor = state.typo.ink === 'auto' ? style.glow : ink;
+        ctx.shadowBlur = 12;
+      }
+      ctx.fillStyle = ink;
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = Math.max(1, ms * 0.1);
+      motif.draw(ctx, ms);
+      ctx.restore();
+    }
   }
 
   let typoTimer = null;
@@ -244,6 +264,7 @@ export function initUI(state, handlers) {
   }
 
   els.font.addEventListener('change', () => { state.typo.font = els.font.value; typoChanged(true); });
+  els.motif.addEventListener('change', () => { state.typo.motif = els.motif.value; typoChanged(true); });
   els.size.addEventListener('input', () => { state.typo.size = Number(els.size.value); typoChanged(); });
   els.bold.addEventListener('change', () => { state.typo.bold = els.bold.checked; typoChanged(true); });
   els.glow.addEventListener('change', () => { state.typo.glow = els.glow.checked; typoChanged(true); });
