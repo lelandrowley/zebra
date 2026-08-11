@@ -17,17 +17,23 @@ only you can answer.
   into the PRNG stream that drives every throw. The same three answers always
   weave the same sequence of rolls; change one answer and destiny changes. Your
   answers also mint a personal rune sigil.
-- **Twenty-six stones.** Amethyst, ruby, emerald and sapphire cut as clear
-  jewels; dichroic glass, clear quartz, rose quartz and fluorite; labradorite's
-  blue flash, tiger's eye, malachite, turquoise, sea glass, obsidian, opal,
-  moonstone, pearl, nebula, marble, granite, lapis, jade, gold, silver, copper
-  and bone — built on physically-based transmission, iridescence, clearcoat and
-  emissive starfields. Or flip on **Motley set** to give every die its own
-  stone.
+- **Thirty-one stones.** Amethyst, ruby, emerald and sapphire cut as clear
+  jewels; dichroic glass in hard-edged rainbow wedges; clear quartz, rose
+  quartz and fluorite; labradorite's blue flash, tiger's eye, malachite,
+  turquoise, sea glass, obsidian, opal, moonstone, pearl, nebula, marble,
+  granite, lapis, jade, gold, silver, copper and bone — built on
+  physically-based transmission, iridescence, clearcoat and emissive
+  starfields. Or flip on **Motley set** to give every die its own stone.
+- **Five stones that hold a light.** Emberheart, Lumenglass, Duskfire, Tidecore
+  and Vinelight are cut gems with a light caught inside — a bright core fading
+  out toward the facets, breathing slowly while they sit on the table.
+- **Engraving motifs.** A moon and star, a dragon, a dagger, a bolt, a sun, a
+  cat, a unicorn, a vine or a gear, cut in beside the numeral — drawn as vector
+  glyphs, so any of the nine pairs with any of the thirty-one stones.
 - **Typography you can tune.** Five numeral scripts (embedded Cinzel and Uncial
   Antiqua, plus system serif/sans/mono), size, weight, seven inks, glowing
-  numerals, and the classic underline that disambiguates 6 from 9 — with a live
-  preview.
+  numerals, an engraving motif, and the classic underline that disambiguates 6
+  from 9 — with a live preview.
 - **A magical table.** Rune ring that surges while the dice fly, orbiting wisp
   lights, drifting dust motes, impact sparks, bloom, and a settle chime — plus
   floating result chips pinned above each die, a counted-up total, crit/fumble

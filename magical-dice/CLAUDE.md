@@ -28,11 +28,14 @@ Requires Node 20.19+ or 22+. The headless harness needs a Chromium once:
   supporting-plane enumeration, so one code path builds all six (including the
   d10 trapezohedron). Faces get chamfered edges; opposite faces sum to n+1.
   Cached per (type, radius).
-- `src/dice/materials.js` — 18 style presets (MeshPhysicalMaterial recipes +
+- `src/dice/materials.js` — 31 style presets (MeshPhysicalMaterial recipes +
   procedural canvas patterns). Face textures are cached by
   `style | dieType | typoKey`; call `clearMaterialCache()` when typography or
-  style changes or you'll paint stale numerals.
-- `src/dice/faces.js` — numeral painting and the typography options.
+  style changes or you'll paint stale numerals. The infused gems are marked
+  `living: true` and breathe via `tickInfusedGlow(t)`, called once a frame from
+  `main.js`.
+- `src/dice/faces.js` — numeral painting, the typography options, and the
+  engraving motifs (canvas vector glyphs, no assets).
 - `src/dice/die.js` — mesh + cannon body + `read()` (top face, or top vertex
   for the d4).
 - `src/physics.js` — world, tray walls, and `applyFelt()`.
@@ -65,12 +68,26 @@ Requires Node 20.19+ or 22+. The headless harness needs a Chromium once:
      wall, so they creep through it at ordinary speeds — no amount of wall
      height or thickness fixes that. Like `applyFelt`, it runs inside the
      fixed step, so it must stay free of wall-clock and `Math.random`.
-6. **Impact sounds are modal.** `audio.js` builds each clack from damped
+6. **A dark vault fights every bright material, in two different ways.** Both
+   have already cost a rebuild:
+   * High `transmission` transmits the near-black surroundings, so a gem with
+     no `emissiveBase` renders BLACK however good its numbers look on paper.
+   * Emissive is the fix, but `scene.js` runs ACES tonemapping and a bloom
+     pass thresholded at 0.83, so pushing emissive too hard desaturates
+     saturated colour toward white and blurs hard edges into mush. Vivid
+     colour lives in a narrow band — go bright enough to beat the darkness,
+     not so bright that bloom bleaches it.
+   Always check a material change on screen. Both failures look fine in code.
+7. **Motif ids belong in `typoKeyOf`.** Face textures are cached by
+   `style | dieType | typoKey`. Anything that changes what's painted on a face
+   and isn't in that key means stale faces and a setting that silently does
+   nothing.
+8. **Impact sounds are modal.** `audio.js` builds each clack from damped
    sinusoids at inharmonic ratios, because that spread is what the ear reads
    as material. Broadband filtered noise reads as hiss and a falling sine
    reads as a drum — that was the first version, and it sounded cheap.
    `npm run audition` renders the sounds to WAV so you can check by ear.
-7. **Sandboxed embeds are a supported target.** `localStorage` access must stay
+9. **Sandboxed embeds are a supported target.** `localStorage` access must stay
    guarded (it throws on opaque origins) and the rAF watchdog in `main.js`
    must survive — some hosts park `requestAnimationFrame` entirely.
    `node scripts/probe-sandbox.mjs` reproduces that environment.
