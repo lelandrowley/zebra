@@ -122,19 +122,57 @@ function starfield(ctx, S, rand, count) {
   }
 }
 
+/** Wavy vertical color bands — chatoyant stripes or mineral zoning. */
+function wavyBands(ctx, S, rand, colors, count, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const bw = S / count;
+  for (let i = 0; i < count; i++) {
+    ctx.strokeStyle = colors[i % colors.length];
+    ctx.lineWidth = bw * (0.7 + rand() * 0.5);
+    const amp = S * (0.05 + rand() * 0.06);
+    const phase = rand() * Math.PI * 2;
+    ctx.beginPath();
+    for (let y = -10; y <= S + 10; y += 8) {
+      const x = (i + 0.5) * bw + Math.sin((y / S) * Math.PI * 2 + phase) * amp;
+      if (y === -10) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** Concentric rings around an off-center point — polished-slice banding. */
+function concentricArcs(ctx, S, rand, colors, cx, cy, count, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  let r = S * 0.04;
+  for (let i = 0; i < count; i++) {
+    ctx.strokeStyle = colors[i % colors.length];
+    ctx.lineWidth = S * (0.025 + rand() * 0.03);
+    r += ctx.lineWidth * (0.9 + rand() * 0.6);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 // --- style presets ----------------------------------------------------------
 // mat: MeshPhysicalMaterial params. pattern: albedo tile. emissivePattern: glow tile.
 // ink/glow: default numeral colors chosen for contrast on this stone.
 
 const gem = (over) => ({
-  metalness: 0, roughness: 0.09, transmission: 0.92, ior: 1.85, thickness: 1.25,
-  attenuationDistance: 1.6, clearcoat: 0.35, clearcoatRoughness: 0.18,
+  metalness: 0, roughness: 0.06, transmission: 0.96, ior: 1.85, thickness: 1.45,
+  attenuationDistance: 2.4, clearcoat: 0.35, clearcoatRoughness: 0.18,
   envMapIntensity: 1.0, dispersion: 0.16, ...over,
 });
-const gemPattern = (inner, outer, streakColor) => (ctx, S, r) => {
+// streakAlpha/blobAlpha default to the original gem look; classic gems pass fainter values
+// so the interior reads as clear colored glass instead of a painted surface.
+const gemPattern = (inner, outer, streakColor, streakAlpha = 0.09, blobAlpha = 0.06) => (ctx, S, r) => {
   gradientBase(ctx, S, inner, outer);
-  streaks(ctx, S, r, streakColor, 7, 0.09);
-  blobs(ctx, S, r, ['#ffffff'], 4, 10, 34, 0.06);
+  streaks(ctx, S, r, streakColor, 7, streakAlpha);
+  blobs(ctx, S, r, ['#ffffff'], 4, 10, 34, blobAlpha);
 };
 
 export const STYLES = [
@@ -142,37 +180,97 @@ export const STYLES = [
     id: 'amethyst', name: 'Amethyst', kind: 'gem', swatch: ['#c9a2f7', '#5b2d9e'],
     ink: '#f6eeff', glow: '#dfc2ff', emissiveBase: '#2a1650',
     mat: gem({ color: '#9a63e8', attenuationColor: '#5c24b8' }),
-    pattern: gemPattern('#c9a5f6', '#7b3fd6', '#ffffff'),
+    pattern: gemPattern('#eaddfa', '#9d5eec', '#ffffff', 0.06, 0.04),
   },
   {
     id: 'ruby', name: 'Ruby', kind: 'gem', swatch: ['#ff7d96', '#8e0b2b'],
     ink: '#fff0f2', glow: '#ffb8c6', emissiveBase: '#48091c',
     mat: gem({ color: '#e0234f', attenuationColor: '#900c2c' }),
-    pattern: gemPattern('#ff9eb0', '#d61b45', '#ffffff'),
+    pattern: gemPattern('#ffd9df', '#f23d5e', '#ffffff', 0.06, 0.04),
   },
   {
     id: 'emerald', name: 'Emerald', kind: 'gem', swatch: ['#5fe3a1', '#0b6b3d'],
     ink: '#eefff6', glow: '#a9f5cd', emissiveBase: '#0a3c25',
     mat: gem({ color: '#17b26a', attenuationColor: '#07733f' }),
-    pattern: gemPattern('#8fedbf', '#12a35c', '#ffffff'),
+    pattern: gemPattern('#d9f7e6', '#2bc47f', '#ffffff', 0.06, 0.04),
   },
   {
     id: 'sapphire', name: 'Sapphire', kind: 'gem', swatch: ['#6f9bff', '#123a94'],
     ink: '#eef3ff', glow: '#b7ccff', emissiveBase: '#101f52',
     mat: gem({ color: '#2e63d8', attenuationColor: '#162f8e' }),
-    pattern: gemPattern('#93b1f4', '#2551c4', '#ffffff'),
+    pattern: gemPattern('#dbe6fb', '#3f74e8', '#ffffff', 0.06, 0.04),
   },
   {
     id: 'seaglass', name: 'Sea Glass', kind: 'gem', swatch: ['#b8efe3', '#3f9c8c'],
     ink: '#0b4a42', glow: '#d8fff6', emissiveBase: '#12352d',
-    mat: gem({ color: '#8fd8c8', roughness: 0.3, transmission: 0.85, ior: 1.5, clearcoat: 0.3, dispersion: 0.03, attenuationColor: '#5cb2a2' }),
+    mat: gem({ color: '#8fd8c8', roughness: 0.3, transmission: 0.85, ior: 1.5, thickness: 1.25, clearcoat: 0.3, dispersion: 0.03, attenuationColor: '#5cb2a2', attenuationDistance: 1.6 }),
     pattern: gemPattern('#eafff9', '#a5ded2', '#ffffff'),
   },
   {
     id: 'obsidian', name: 'Obsidian', kind: 'gem', swatch: ['#4d4360', '#0e0a16'],
     ink: '#f2e9ff', glow: '#b9a5e8', emissiveBase: '#170d2b',
-    mat: gem({ color: '#191223', transmission: 0.3, roughness: 0.05, ior: 1.5, clearcoat: 1, attenuationColor: '#0c0813', attenuationDistance: 0.8, dispersion: 0.05 }),
+    mat: gem({ color: '#191223', transmission: 0.3, roughness: 0.05, ior: 1.5, thickness: 1.25, clearcoat: 1, attenuationColor: '#0c0813', attenuationDistance: 0.8, dispersion: 0.05 }),
     pattern: (ctx, S, r) => { gradientBase(ctx, S, '#3a2f4e', '#120c1e'); streaks(ctx, S, r, '#8f7bb8', 6, 0.12); },
+  },
+  {
+    id: 'dichroic', name: 'Dichroic', kind: 'gem', swatch: ['#8ff0e0', '#c060e0'],
+    ink: '#26264a', glow: '#c9f7ff', emissiveBase: '#123044',
+    // Dichroic glass reads as lit from within. The vault is dark, so a die at
+    // 0.96 transmission just transmits the darkness — hence the moderated
+    // transmission, the emissive rainbow film, and the lifted env intensity.
+    mat: {
+      color: '#dff4f2', metalness: 0, roughness: 0.05, transmission: 0.72, ior: 1.6, thickness: 0.9,
+      clearcoat: 1, clearcoatRoughness: 0.05, iridescence: 1.0, iridescenceIOR: 1.8,
+      iridescenceThicknessRange: [140, 800], dispersion: 0.2, envMapIntensity: 2.0,
+      attenuationColor: '#d99ae8', attenuationDistance: 6.0, emissiveIntensity: 0.9,
+    },
+    pattern: (ctx, S, r) => {
+      gradientBase(ctx, S, '#fbfffe', '#dcefee');
+      blobs(ctx, S, r, ['#ff8fe0', '#7fe8e0', '#ffe08a', '#9fb0ff'], 24, 14, 48, 0.3);
+    },
+    emissivePattern: (ctx, S, r) => {
+      blobs(ctx, S, r, ['#7a1f6a', '#125a56', '#6a4a12', '#243a7a'], 22, 16, 54, 0.55);
+    },
+  },
+  {
+    id: 'clearquartz', name: 'Clear Quartz', kind: 'gem', swatch: ['#eafcff', '#a8c4cc'],
+    ink: '#232733', glow: '#eafdff', emissiveBase: '#2b3742',
+    mat: {
+      color: '#f4fbfc', metalness: 0, roughness: 0.04, transmission: 0.82, ior: 1.55, thickness: 0.9,
+      clearcoat: 0.5, clearcoatRoughness: 0.08, attenuationColor: '#eaf7f9', attenuationDistance: 8,
+      dispersion: 0.12, envMapIntensity: 1.9, emissiveIntensity: 0.75,
+    },
+    pattern: (ctx, S, r) => {
+      gradientBase(ctx, S, '#ffffff', '#eef7f8');
+      streaks(ctx, S, r, '#ffffff', 5, 0.06);
+      streaks(ctx, S, r, '#cfe6ea', 4, 0.05);
+    },
+  },
+  {
+    id: 'rosequartz', name: 'Rose Quartz', kind: 'gem', swatch: ['#ffb3cf', '#c25c7e'],
+    ink: '#5c2038', glow: '#ffd9e8', emissiveBase: '#4a1f30',
+    mat: {
+      color: '#f3c7d6', metalness: 0, roughness: 0.2, transmission: 0.7, ior: 1.54, thickness: 0.9,
+      attenuationColor: '#f0b8c8', attenuationDistance: 4.0, clearcoat: 0.4, clearcoatRoughness: 0.25,
+      envMapIntensity: 1.6, dispersion: 0.08, emissiveIntensity: 0.7,
+    },
+    pattern: (ctx, S, r) => {
+      gradientBase(ctx, S, '#ffe9f1', '#f0b8cc');
+      blobs(ctx, S, r, ['#ffffff', '#ffcfe0'], 16, 16, 50, 0.3);
+    },
+  },
+  {
+    id: 'fluorite', name: 'Fluorite', kind: 'gem', swatch: ['#7fe0a8', '#8a6fd8'],
+    ink: '#1c3626', glow: '#e6d9ff', emissiveBase: '#1d3a3a',
+    mat: {
+      color: '#bfe8cf', metalness: 0, roughness: 0.14, transmission: 0.74, ior: 1.43, thickness: 0.9,
+      attenuationColor: '#b79ce0', attenuationDistance: 4.5, clearcoat: 0.4, clearcoatRoughness: 0.15,
+      envMapIntensity: 1.7, dispersion: 0.1, emissiveIntensity: 0.7,
+    },
+    pattern: (ctx, S, r) => {
+      gradientBase(ctx, S, '#e2fbe8', '#e6def8');
+      wavyBands(ctx, S, r, ['#8fe0b0', '#b79cf0', '#a8ecc4', '#9678d9'], 9, 0.4);
+    },
   },
   {
     id: 'opal', name: 'Opal', kind: 'magic', swatch: ['#fdf6ef', '#a9d8d0'],
@@ -196,6 +294,21 @@ export const STYLES = [
       attenuationColor: '#9fb4e8', attenuationDistance: 2.6, envMapIntensity: 1.0,
     },
     pattern: (ctx, S, r) => { gradientBase(ctx, S, '#ffffff', '#ccd8f2'); blobs(ctx, S, r, ['#ffffff', '#c4d4ff'], 14, 12, 48, 0.35); },
+  },
+  {
+    id: 'labradorite', name: 'Labradorite', kind: 'magic', swatch: ['#9fb8d8', '#232838'],
+    ink: '#e7f0ff', glow: '#a8d8ff',
+    mat: {
+      color: '#333c4c', metalness: 0.05, roughness: 0.32, transmission: 0.15, ior: 1.55, thickness: 0.6,
+      clearcoat: 0.7, clearcoatRoughness: 0.12, iridescence: 0.9, iridescenceIOR: 1.6,
+      iridescenceThicknessRange: [280, 620], attenuationColor: '#232a38', attenuationDistance: 1.2,
+      envMapIntensity: 1.1,
+    },
+    pattern: (ctx, S, r) => {
+      gradientBase(ctx, S, '#4a5568', '#1c222c');
+      streaks(ctx, S, r, '#bcdcff', 8, 0.22);
+      streaks(ctx, S, r, '#eaf4ff', 3, 0.15);
+    },
   },
   {
     id: 'pearl', name: 'Pearl', kind: 'magic', swatch: ['#fff8ee', '#d8c2b4'],
@@ -250,6 +363,35 @@ export const STYLES = [
       gradientBase(ctx, S, '#2d55c2', '#14245e');
       blobs(ctx, S, r, ['#0d1840', '#3e6ad8'], 12, 16, 60, 0.4);
       speckle(ctx, S, r, ['#f2cf6a', '#ffe9a0'], 90, 0.5, 1.8, 0.8);
+    },
+  },
+  {
+    id: 'tigereye', name: "Tiger's Eye", kind: 'stone', swatch: ['#e0b25a', '#4a2f10'],
+    ink: '#2e1c08', glow: '#ffdf9c',
+    mat: { color: '#a97a34', metalness: 0.15, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.12, envMapIntensity: 1.3 },
+    pattern: (ctx, S, r) => {
+      gradientBase(ctx, S, '#c99a4a', '#5c3814');
+      wavyBands(ctx, S, r, ['#3a2410', '#a97a2e', '#7a5220', '#c99a42'], 12, 0.55);
+      wavyBands(ctx, S, r, ['#ffe9a8'], 1, 0.42);
+    },
+  },
+  {
+    id: 'malachite', name: 'Malachite', kind: 'stone', swatch: ['#4fd08a', '#0a3a22'],
+    ink: '#eafff2', glow: '#bfffd8',
+    mat: { color: '#0f5c34', metalness: 0, roughness: 0.18, clearcoat: 0.9, clearcoatRoughness: 0.08, envMapIntensity: 1.0 },
+    pattern: (ctx, S, r) => {
+      gradientBase(ctx, S, '#1c6b3e', '#082c1a');
+      concentricArcs(ctx, S, r, ['#083d22', '#2fae72', '#0e5c37', '#7be3ad', '#155c34'], S * 0.34, S * 0.4, 18, 0.9);
+    },
+  },
+  {
+    id: 'turquoise', name: 'Turquoise', kind: 'stone', swatch: ['#5fd6d0', '#1f6b62'],
+    ink: '#2a1a10', glow: '#eafffb',
+    mat: { color: '#3fb8ae', metalness: 0, roughness: 0.35, clearcoat: 0.5, clearcoatRoughness: 0.2, envMapIntensity: 0.9 },
+    pattern: (ctx, S, r) => {
+      gradientBase(ctx, S, '#6fe0d4', '#1f7a70');
+      blobs(ctx, S, r, ['#8ef0e6', '#2f9a90', '#57c9bd'], 14, 14, 46, 0.35);
+      veins(ctx, S, r, '#2b1c10', 5, 0.5);
     },
   },
   {
