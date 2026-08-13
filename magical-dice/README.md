@@ -81,7 +81,7 @@ npm run ios        # = vite build + cap sync ios + cap open ios
 
 Then select your signing team under *Signing & Capabilities* and press Run —
 simulator or device. Requires iOS 15+ (the gems need WebGL2, which WKWebView
-enables from iOS 15). The bundle id defaults to `com.kinsort.fatewoven` —
+enables from iOS 15). The bundle id is `com.leland.fatewoven` —
 change it in `capacitor.config.json` and Xcode signing if you ship it.
 
 **No Mac handy?** Fatewoven is also an installable PWA: host `dist/` over

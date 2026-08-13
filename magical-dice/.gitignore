@@ -1,2 +1,5 @@
 node_modules/
 dist/
+
+# iCloud Drive duplicate-conflict artifacts
+*[0-9].xml
