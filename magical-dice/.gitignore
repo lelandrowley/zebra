@@ -3,3 +3,6 @@ dist/
 
 # iCloud Drive duplicate-conflict artifacts
 *[0-9].xml
+
+# Throwaway harnesses: scripts/_*.mjs are scratch, never committed
+scripts/_*.mjs
