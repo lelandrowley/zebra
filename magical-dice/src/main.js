@@ -166,7 +166,10 @@ function boot() {
       return;
     }
     if (game && !game.canRoll()) {
-      ui.toast('This game is over — play again or exit the table.');
+      // No toast here on purpose — the HUD's own "Complete" state, result
+      // card and glowing Play-again button already explain why, and a
+      // centred toast would sit right on top of the HUD's corner card
+      // (and its Exit game button) on a phone-width screen.
       return;
     }
     throwAll();
@@ -196,13 +199,19 @@ function boot() {
     } : null);
   }
 
+  // A game's loadout (e.g. Pig's `{ d6: 1 }`) only lists the die types it
+  // uses. state.loadout must stay a fully zero-filled shape — the Dice tab
+  // reads state.loadout[type] for every DIE_TYPES entry — so fill in the
+  // rest at 0, the same way a preset's loadout gets applied.
+  const fullLoadout = (sparse) => Object.fromEntries(DIE_TYPES.map((t) => [t, sparse[t] ?? 0]));
+
   function enterGame(id) {
     const def = gameById(id);
     if (!def) return;
     if (!game) preGameLoadout = { ...state.loadout };
     game = createGame(id);
     state.gameId = id;
-    state.loadout = { ...game.loadout };
+    state.loadout = fullLoadout(game.loadout);
     applyLoadoutChange();
     refreshGameHUD();
   }
@@ -356,7 +365,7 @@ function boot() {
   // is a fresh instance of whichever game was active, not a mid-round resume.
   if (state.gameId && gameById(state.gameId)) {
     game = createGame(state.gameId);
-    state.loadout = { ...game.loadout };
+    state.loadout = fullLoadout(game.loadout);
   }
 
   buildDice();
