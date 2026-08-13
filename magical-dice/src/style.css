@@ -95,6 +95,19 @@ body {
   margin-top: 2px;
 }
 
+/* Quiet "you are playing X" line — only shown while a game is active. */
+#mode-indicator {
+  font-family: var(--display);
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-top: 3px;
+  text-shadow: 0 0 10px rgba(232, 197, 106, 0.3);
+}
+
+#mode-indicator.hidden { display: none; }
+
 /* ---------- roll bar ---------- */
 
 #roll-bar {
@@ -217,6 +230,164 @@ body {
   0%, 100% { text-shadow: 0 0 34px rgba(255, 227, 161, 0.55), 0 4px 10px rgba(0, 0, 0, 0.65); }
   50% { text-shadow: 0 0 60px rgba(255, 227, 161, 0.95), 0 0 120px rgba(232, 197, 106, 0.5), 0 4px 10px rgba(0, 0, 0, 0.65); }
 }
+
+/* ---------- game hud (Play mode) ---------- */
+/* Occupies the same slot #verdict uses — the two are mutually exclusive
+   (the big total is suppressed while a game is active), so they never fight. */
+
+#game-hud {
+  /* Top-left, deliberately: this is a solid card, not the verdict's
+     see-through glowing text, so anything centred over the tray hides the
+     dice behind it — which is the one thing this app must not do. The
+     chronicle owns bottom-left, the roll bar bottom-centre, and the brand and
+     toast top-centre, so this corner is the only one genuinely free. */
+  position: absolute;
+  left: calc(18px + var(--safe-left, 0px));
+  top: calc(96px + var(--safe-top));
+  z-index: 4;
+  width: min(72vw, 260px);
+  text-align: left;
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 11px 14px 13px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5), 0 0 20px rgba(232, 197, 106, 0.12);
+  animation: verdict-in 0.4s cubic-bezier(0.2, 1.6, 0.35, 1);
+}
+
+#game-hud.hidden { display: none; }
+
+#hud-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+#hud-headline {
+  font-family: var(--display);
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+#hud-exit {
+  flex: none;
+  font-family: var(--display);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+#hud-exit:hover { color: #ff9aa8; border-color: var(--blood); background: rgba(224, 80, 106, 0.08); }
+#hud-exit:active { transform: scale(0.96); }
+
+#hud-score {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(32px, 7vw, 46px);
+  line-height: 1.2;
+  color: var(--gold-bright);
+  text-shadow: 0 0 20px rgba(232, 197, 106, 0.4), 0 2px 6px rgba(0, 0, 0, 0.6);
+  margin-top: 2px;
+}
+
+#hud-sub {
+  font-size: 11.5px;
+  color: var(--gold);
+}
+
+#hud-detail {
+  font-size: 12.5px;
+  color: var(--ink);
+  margin-top: 6px;
+  line-height: 1.45;
+}
+
+#hud-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 11px;
+}
+
+#hud-actions.hidden { display: none; }
+
+.hud-action-btn {
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(232, 197, 106, 0.06);
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.hud-action-btn:hover:not(:disabled) { background: rgba(232, 197, 106, 0.16); border-color: var(--gold); }
+.hud-action-btn:active:not(:disabled) { transform: scale(0.96); }
+.hud-action-btn:disabled { opacity: 0.3; cursor: default; }
+
+.hud-action-btn.primary {
+  border-color: var(--gold);
+  background: linear-gradient(180deg, rgba(232, 197, 106, 0.28), rgba(232, 197, 106, 0.1));
+  color: var(--gold-bright);
+}
+
+.hud-action-btn.primary:hover:not(:disabled) { box-shadow: 0 0 16px rgba(232, 197, 106, 0.35); }
+
+#hud-over {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#hud-over.hidden { display: none; }
+
+.hud-result-title {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 19px;
+  color: var(--gold-bright);
+}
+
+.hud-result-detail {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+.hud-again {
+  margin-top: 11px;
+  padding: 9px 22px;
+  border-radius: 999px;
+  border: 1px solid var(--gold);
+  background: linear-gradient(180deg, rgba(232, 197, 106, 0.2), rgba(232, 197, 106, 0.07));
+  color: var(--gold-bright);
+  font-family: var(--display);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.12s;
+}
+
+.hud-again:hover { box-shadow: 0 0 18px rgba(232, 197, 106, 0.35); }
+.hud-again:active { transform: scale(0.97); }
 
 /* ---------- projected chips ---------- */
 
@@ -596,6 +767,111 @@ body {
   transition: color 0.6s;
 }
 
+/* game mode entry — deliberately quiet, tucked below the real tabs */
+
+#game-mode-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 22px;
+  padding-top: 14px;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--display);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+#game-mode-entry:hover { color: var(--gold); }
+#game-mode-entry .gm-chev { margin-left: auto; font-family: var(--body); opacity: 0.6; }
+#game-mode-entry.hidden { display: none; }
+
+#tabs.hidden { display: none; }
+
+.play-back {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: var(--display);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 12px;
+  transition: color 0.15s;
+}
+
+.play-back:hover { color: var(--gold); }
+
+.game-list { display: flex; flex-direction: column; gap: 9px; }
+
+.game-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.12s;
+}
+
+.game-card:hover { border-color: var(--gold-dim); background: rgba(232, 197, 106, 0.05); }
+.game-card:active { transform: scale(0.99); }
+
+.game-card.active {
+  border-color: var(--gold-bright);
+  background: rgba(232, 197, 106, 0.08);
+  box-shadow: 0 0 14px rgba(232, 197, 106, 0.2);
+  cursor: default;
+}
+
+.game-card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+
+.game-name { font-family: var(--display); font-weight: 700; font-size: 14.5px; color: var(--gold-bright); }
+
+.game-dice {
+  font-family: var(--display);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  border: 1px solid var(--line);
+  background: rgba(232, 197, 106, 0.06);
+  border-radius: 999px;
+  padding: 2px 8px;
+  flex: none;
+}
+
+.game-blurb { font-size: 11.5px; line-height: 1.5; color: var(--muted); }
+
+.game-playing {
+  font-family: var(--display);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-top: 2px;
+}
+
 /* toast */
 
 #toast {
@@ -659,11 +935,22 @@ body {
 
   #verdict { bottom: calc(118px + var(--safe-bottom)); }
 
+  /* Narrower and tighter on a phone: the tray fills the width here, so the
+     card unavoidably overlaps its rim — keep it small and let the felt
+     show through. Never set `bottom` as well as `top`, or the card
+     stretches between the two and swallows the screen. */
+  #game-hud { width: min(58vw, 208px); padding: 9px 12px 11px;
+    background: color-mix(in srgb, var(--panel) 78%, transparent); }
+  #game-hud #hud-score { font-size: 30px; }
+  /* Tighter tracking so "Round 1 of 10" stays on one line beside Exit. */
+  #game-hud #hud-headline { font-size: 9.5px; letter-spacing: 0.1em; }
+  #game-hud #hud-exit { padding: 3px 8px; font-size: 9.5px; }
+
   .swatch-grid { grid-template-columns: repeat(5, 1fr); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   #roll-btn .rune-ring { animation: none; }
   #verdict-total { animation: none !important; }
-  .die-chip, #chronicle li, .tab-page { animation: none; }
+  .die-chip, #chronicle li, .tab-page, #game-hud { animation: none; }
 }

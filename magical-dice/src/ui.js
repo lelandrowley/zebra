@@ -4,6 +4,7 @@
 import { STYLES, styleById, styleSwatchURL } from './dice/materials.js';
 import { FONTS, INKS, fontById, MOTIFS, motifById } from './dice/faces.js';
 import { DIE_TYPES } from './dice/geometry.js';
+import { GAMES } from './games.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -56,6 +57,23 @@ export function initUI(state, handlers) {
     sigil: $('#sigil'),
     sound: $('#opt-sound'),
     toast: $('#toast'),
+    modeIndicator: $('#mode-indicator'),
+    gameHud: $('#game-hud'),
+    hudHeadline: $('#hud-headline'),
+    hudExit: $('#hud-exit'),
+    hudScore: $('#hud-score'),
+    hudSub: $('#hud-sub'),
+    hudDetail: $('#hud-detail'),
+    hudActions: $('#hud-actions'),
+    hudOver: $('#hud-over'),
+    hudResultTitle: $('#hud-result-title'),
+    hudResultDetail: $('#hud-result-detail'),
+    hudAgain: $('#hud-again'),
+    tabsNav: $('#tabs'),
+    gameModeEntry: $('#game-mode-entry'),
+    playBack: $('#play-back-btn'),
+    pagePlay: $('#page-play'),
+    games: $('#games'),
   };
 
   let toastTimer = null;
@@ -68,13 +86,17 @@ export function initUI(state, handlers) {
 
   // ---- panel & tabs --------------------------------------------------------
 
+  function closePanel() {
+    els.panel.classList.add('closed');
+    els.panelToggle.setAttribute('aria-expanded', 'false');
+  }
+
   els.panelToggle.addEventListener('click', () => {
     const closed = els.panel.classList.toggle('closed');
     els.panelToggle.setAttribute('aria-expanded', String(!closed));
   });
   if (window.innerWidth < 760) {
-    els.panel.classList.add('closed');
-    els.panelToggle.setAttribute('aria-expanded', 'false');
+    closePanel();
   }
 
   document.querySelectorAll('.tab').forEach((tab) => {
@@ -88,11 +110,37 @@ export function initUI(state, handlers) {
     });
   });
 
+  // ---- game mode -------------------------------------------------------
+  // A deliberately quiet, secondary entry point — NOT one of the real tabs.
+  // #game-mode-entry lives below the tab row; opening it hides the tabs and
+  // shows #page-play, closable only via the explicit Back button.
+
+  function openGameMode() {
+    document.querySelectorAll('.tab-page').forEach((p) => {
+      if (p !== els.pagePlay) p.classList.remove('active');
+    });
+    els.pagePlay.classList.add('active');
+    els.tabsNav.classList.add('hidden');
+    els.gameModeEntry.classList.add('hidden');
+  }
+
+  function closeGameMode() {
+    els.pagePlay.classList.remove('active');
+    const activeTab = document.querySelector('.tab.active') || document.querySelector('.tab');
+    if (activeTab) document.getElementById(`page-${activeTab.dataset.tab}`)?.classList.add('active');
+    els.tabsNav.classList.remove('hidden');
+    els.gameModeEntry.classList.remove('hidden');
+  }
+
+  els.gameModeEntry.addEventListener('click', openGameMode);
+  els.playBack.addEventListener('click', closeGameMode);
+
   // ---- loadout -------------------------------------------------------------
 
   const totalDice = () => Object.values(state.loadout).reduce((a, b) => a + b, 0);
 
   function renderLoadout() {
+    const locked = !!state.gameId;
     els.loadout.innerHTML = '';
     for (const type of DIE_TYPES) {
       const row = document.createElement('div');
@@ -101,17 +149,88 @@ export function initUI(state, handlers) {
         <svg viewBox="0 0 100 100" aria-hidden="true"><path class="shape" d="${DIE_ICONS[type]}"/></svg>
         <span class="name">${type}</span>
         <span class="count">${state.loadout[type]}</span>
-        <button class="minus" aria-label="remove a ${type}" ${state.loadout[type] === 0 ? 'disabled' : ''}>−</button>
-        <button class="plus" aria-label="add a ${type}" ${totalDice() >= MAX_DICE ? 'disabled' : ''}>+</button>`;
+        <button class="minus" aria-label="remove a ${type}" ${locked || state.loadout[type] === 0 ? 'disabled' : ''}>−</button>
+        <button class="plus" aria-label="add a ${type}" ${locked || totalDice() >= MAX_DICE ? 'disabled' : ''}>+</button>`;
       row.querySelector('.minus').addEventListener('click', () => bump(type, -1));
       row.querySelector('.plus').addEventListener('click', () => bump(type, +1));
       els.loadout.appendChild(row);
     }
-    els.capHint.textContent = totalDice() >= MAX_DICE
-      ? `The tray holds ${MAX_DICE} dice at most.`
-      : '';
+    els.presets.querySelectorAll('button').forEach((b) => { b.disabled = locked; });
+    els.capHint.textContent = locked
+      ? 'Dice are locked while a game is on the table — exit the game to choose your own.'
+      : totalDice() >= MAX_DICE
+        ? `The tray holds ${MAX_DICE} dice at most.`
+        : '';
     renderSummary();
   }
+
+  // ---- games -----------------------------------------------------------
+
+  function renderGames() {
+    els.games.innerHTML = '';
+    for (const g of GAMES) {
+      const active = state.gameId === g.id;
+      const b = document.createElement('button');
+      b.className = 'game-card' + (active ? ' active' : '');
+      b.innerHTML = `
+        <span class="game-card-top">
+          <span class="game-name">${g.name}</span>
+          <span class="game-dice">${g.dice}</span>
+        </span>
+        <span class="game-blurb">${g.blurb}</span>
+        ${active ? '<span class="game-playing">Now playing</span>' : ''}`;
+      if (active) {
+        b.disabled = true;
+      } else {
+        b.addEventListener('click', () => {
+          handlers.onGameSelect(g.id);
+          closeGameMode();
+          closePanel();
+        });
+      }
+      els.games.appendChild(b);
+    }
+  }
+
+  function renderGameHUD(view) {
+    renderLoadout();
+    renderGames();
+
+    els.modeIndicator.classList.toggle('hidden', !view);
+    if (view) els.modeIndicator.textContent = `Playing · ${view.name}`;
+
+    if (!view) {
+      els.gameHud.classList.add('hidden');
+      return;
+    }
+    els.gameHud.classList.remove('hidden');
+    const { status, actions, over, result } = view;
+
+    els.hudHeadline.textContent = status.headline;
+    els.hudScore.textContent = status.score;
+    els.hudSub.textContent = status.sub || '';
+    els.hudDetail.textContent = status.detail || '';
+
+    els.hudActions.innerHTML = '';
+    for (const a of actions) {
+      const b = document.createElement('button');
+      b.className = 'hud-action-btn' + (a.primary ? ' primary' : '');
+      b.textContent = a.label;
+      b.disabled = !!a.disabled;
+      b.addEventListener('click', () => handlers.onGameAction(a.id));
+      els.hudActions.appendChild(b);
+    }
+    els.hudActions.classList.toggle('hidden', over || actions.length === 0);
+
+    els.hudOver.classList.toggle('hidden', !over);
+    if (over && result) {
+      els.hudResultTitle.textContent = result.title;
+      els.hudResultDetail.textContent = result.detail;
+    }
+  }
+
+  els.hudExit.addEventListener('click', () => handlers.onGameLeave());
+  els.hudAgain.addEventListener('click', () => handlers.onGameReset());
 
   function bump(type, delta) {
     const next = Math.max(0, state.loadout[type] + delta);
@@ -374,6 +493,7 @@ export function initUI(state, handlers) {
   renderStyles();
   renderInks();
   drawTypePreview();
+  renderGames();
 
   return {
     toast,
@@ -388,5 +508,6 @@ export function initUI(state, handlers) {
     renderSummary,
     drawTypePreview,
     totalDice,
+    renderGameHUD,
   };
 }

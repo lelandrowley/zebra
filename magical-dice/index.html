@@ -24,6 +24,7 @@
     <header id="brand">
       <h1><span class="star">✦</span> Fatewoven <span class="star">✦</span></h1>
       <p class="tagline">dice of destiny</p>
+      <p id="mode-indicator" class="hidden"></p>
     </header>
 
     <!-- Total + crit banner -->
@@ -31,6 +32,23 @@
       <div id="verdict-flourish"></div>
       <div id="verdict-total">—</div>
       <div id="verdict-label">total</div>
+    </div>
+
+    <!-- Game HUD — only shown while a game is active (Play mode) -->
+    <div id="game-hud" class="hidden" role="status" aria-live="polite">
+      <div id="hud-top">
+        <span id="hud-headline"></span>
+        <button id="hud-exit" type="button">Exit game</button>
+      </div>
+      <div id="hud-score"></div>
+      <div id="hud-sub"></div>
+      <div id="hud-detail"></div>
+      <div id="hud-actions"></div>
+      <div id="hud-over" class="hidden">
+        <div id="hud-result-title"></div>
+        <div id="hud-result-detail"></div>
+        <button id="hud-again" type="button">Play again</button>
+      </div>
     </div>
 
     <!-- Roll controls -->
@@ -113,6 +131,18 @@
         <button id="weave-btn">Weave fate</button>
         <div id="sigil" title="Your fate sigil — a fingerprint of your three answers"></div>
         <label class="row toggle-row"><input type="checkbox" id="opt-sound" checked /><span>Sounds of the table</span></label>
+      </section>
+
+      <!-- Game mode: a deliberately quiet, secondary entry point — not a tab -->
+      <button id="game-mode-entry" type="button">
+        <span aria-hidden="true">🎲</span> Game mode <span class="gm-chev" aria-hidden="true">›</span>
+      </button>
+
+      <section class="tab-page" id="page-play" role="tabpanel">
+        <button id="play-back-btn" type="button" class="play-back">‹ Back</button>
+        <h3>Game mode</h3>
+        <p class="hint">Pick a game to play it with the tray's real dice. Your own loadout returns when you leave the table.</p>
+        <div id="games" class="game-list"></div>
       </section>
     </aside>
 

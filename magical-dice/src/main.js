@@ -9,6 +9,7 @@ import { Die } from './dice/die.js';
 import { STYLES, styleById, clearMaterialCache, tickInfusedGlow } from './dice/materials.js';
 import { typoKeyOf } from './dice/faces.js';
 import { DIE_TYPES, DIE_SCALE } from './dice/geometry.js';
+import { createGame, gameById } from './games.js';
 import { Fate } from './rng.js';
 import * as audio from './audio.js';
 import { impactHaptic, resultHaptic, isNativeApp } from './haptics.js';
@@ -29,6 +30,7 @@ const defaults = () => ({
   seeds: ['', '', ''],
   sound: true,
   wisps: false,
+  gameId: null,
 });
 
 function loadState() {
@@ -91,6 +93,9 @@ function boot() {
   let lastClack = 0;
   const activeChips = [];
   const chipAnchor = new THREE.Vector3();
+
+  let game = null;             // the active game engine, or null in free-roll mode
+  let preGameLoadout = null;   // the player's own loadout, remembered across a game
 
   audio.setMuted(!state.sound);
 
@@ -160,12 +165,56 @@ function boot() {
       ui.toast('Choose your dice first — the tray is empty.');
       return;
     }
+    if (game && !game.canRoll()) {
+      ui.toast('This game is over — play again or exit the table.');
+      return;
+    }
     throwAll();
   }
 
   function clearChips() {
     activeChips.length = 0;
     ui.clearChips();
+  }
+
+  // ---- games -----------------------------------------------------------
+
+  function applyLoadoutChange() {
+    saveState(state);
+    buildDice();
+    throwAll({ quiet: true, power: 0.55 });
+  }
+
+  function refreshGameHUD() {
+    const def = state.gameId ? gameById(state.gameId) : null;
+    ui.renderGameHUD(game && def ? {
+      name: def.name,
+      status: game.status(),
+      actions: game.actions(),
+      over: game.isOver(),
+      result: game.isOver() ? game.result() : null,
+    } : null);
+  }
+
+  function enterGame(id) {
+    const def = gameById(id);
+    if (!def) return;
+    if (!game) preGameLoadout = { ...state.loadout };
+    game = createGame(id);
+    state.gameId = id;
+    state.loadout = { ...game.loadout };
+    applyLoadoutChange();
+    refreshGameHUD();
+  }
+
+  function leaveGame() {
+    if (!game) return;
+    game = null;
+    state.gameId = null;
+    state.loadout = preGameLoadout ? { ...preGameLoadout } : { ...defaults().loadout };
+    preGameLoadout = null;
+    applyLoadoutChange();
+    refreshGameHUD();
   }
 
   function settle() {
@@ -206,7 +255,14 @@ function boot() {
     // is ordinary, and with one there is nothing to match.
     const doubles = dice.length === 2 && parts[0] === parts[1];
 
-    ui.showVerdict({ total, single: dice.length === 1, crit, fumble, doubles });
+    if (game) {
+      // A game HUD plus a giant unrelated total would be noise — the HUD's
+      // own score takes over the hero spot while a game is active.
+      game.onRoll(parts);
+      refreshGameHUD();
+    } else {
+      ui.showVerdict({ total, single: dice.length === 1, crit, fumble, doubles });
+    }
     if (crit) audio.critFanfare();
     else if (fumble) audio.fumbleKnell();
     else if (doubles) audio.doublesChime(parts[0]);
@@ -246,9 +302,23 @@ function boot() {
   const ui = initUI(state, {
     onRoll: roll,
     onLoadoutChange() {
-      saveState(state);
-      buildDice();
-      throwAll({ quiet: true, power: 0.55 });
+      applyLoadoutChange();
+    },
+    onGameSelect(id) {
+      enterGame(id);
+    },
+    onGameLeave() {
+      leaveGame();
+    },
+    onGameAction(id) {
+      if (!game) return;
+      game.act(id);
+      refreshGameHUD();
+    },
+    onGameReset() {
+      if (!game) return;
+      game.reset();
+      refreshGameHUD();
     },
     onStyleChange() {
       saveState(state);
@@ -281,8 +351,17 @@ function boot() {
 
   // ---- boot + loop ---------------------------------------------------------
 
+  // Resume a game left active in a previous session — gameId is persisted,
+  // but the game engine's own progress (score, round, pot…) is not, so this
+  // is a fresh instance of whichever game was active, not a mid-round resume.
+  if (state.gameId && gameById(state.gameId)) {
+    game = createGame(state.gameId);
+    state.loadout = { ...game.loadout };
+  }
+
   buildDice();
   throwAll({ quiet: true, power: 0.55 });
+  refreshGameHUD();
 
   if (!storeGet('fatewoven-greeted')) {
     setTimeout(() => {
