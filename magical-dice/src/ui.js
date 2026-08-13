@@ -312,15 +312,17 @@ export function initUI(state, handlers) {
   }
 
   let countUpRaf = null;
-  function showVerdict({ total, single, crit, fumble }) {
-    els.verdict.classList.remove('hidden', 'crit', 'fumble');
+  function showVerdict({ total, single, crit, fumble, doubles }) {
+    els.verdict.classList.remove('hidden', 'crit', 'fumble', 'doubles');
     if (crit) els.verdict.classList.add('crit');
     else if (fumble) els.verdict.classList.add('fumble');
+    else if (doubles) els.verdict.classList.add('doubles');
     els.verdictLabel.textContent = single ? 'the die speaks' : 'total';
     els.verdictFlourish.textContent = crit && fumble ? 'a twist of fate'
-      : crit ? '✦ critical ✦'
-        : fumble ? 'the fates frown'
-          : '';
+      : crit ? (doubles ? '✦ twin crowns ✦' : '✦ critical ✦')
+        : fumble ? (doubles ? 'twin sorrows' : 'the fates frown')
+          : doubles ? '✦ doubles ✦'
+            : '';
     // count-up
     cancelAnimationFrame(countUpRaf);
     const t0 = performance.now();

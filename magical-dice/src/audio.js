@@ -231,3 +231,18 @@ export function fumbleKnell() {
   bell(146.83, t, 3.2, 0.2);
   bell(155.56, t + 0.14, 3.4, 0.15); // minor second rub
 }
+
+/**
+ * A pair matched. Struck as the SAME note twice — one bell answering the
+ * other a beat later, which is the sound of the thing it is announcing.
+ * `face` colours the pitch so snake eyes and double twenties differ.
+ */
+export function doublesChime(face = 1) {
+  if (muted || !ensure()) return;
+  const t = ctx.currentTime;
+  const note = PENTA[face % PENTA.length];
+  bell(note, t, 2.8, 0.15);
+  bell(note, t + 0.17, 2.8, 0.13);
+  bell(note * 2, t + 0.34, 2.4, 0.08);
+  sparkle(t + 0.1, 0.5, 0.6);
+}

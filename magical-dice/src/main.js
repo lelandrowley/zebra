@@ -202,11 +202,16 @@ function boot() {
       view.burst(die.mesh.position, isCrit ? '#ffe3a1' : style.swatch[0]);
     }
 
-    ui.showVerdict({ total, single: dice.length === 1, crit, fumble });
+    // Doubles are only meaningful on a pair — with three dice "two the same"
+    // is ordinary, and with one there is nothing to match.
+    const doubles = dice.length === 2 && parts[0] === parts[1];
+
+    ui.showVerdict({ total, single: dice.length === 1, crit, fumble, doubles });
     if (crit) audio.critFanfare();
     else if (fumble) audio.fumbleKnell();
+    else if (doubles) audio.doublesChime(parts[0]);
     else audio.chime(total, dice.length);
-    resultHaptic(crit ? 'crit' : fumble ? 'fumble' : 'normal');
+    resultHaptic(crit ? 'crit' : fumble ? 'fumble' : doubles ? 'crit' : 'normal');
 
     const label = DIE_TYPES.filter((t) => state.loadout[t] > 0)
       .map((t) => (state.loadout[t] > 1 ? `${state.loadout[t]}${t}` : t)).join('+');
