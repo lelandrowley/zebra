@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "verify": "node scripts/verify.mjs",
     "containment": "node scripts/verify-containment.mjs",
+    "games": "node scripts/verify-games.mjs",
     "audition": "node scripts/audition.mjs",
     "shots": "node scripts/shot.mjs && node scripts/shot-mobile.mjs",
     "icons": "node scripts/gen-icons.mjs",
