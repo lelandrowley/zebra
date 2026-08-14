@@ -258,6 +258,31 @@ body {
 
 #game-hud.hidden { display: none; }
 
+/* The way out, offered in the panel as well as on the HUD. Someone who
+   switched a game ON here comes back here to switch it off. */
+#game-leave-btn {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 11px 14px;
+  font-family: var(--display);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+#game-leave-btn:hover { background: rgba(232, 197, 106, 0.08); border-color: var(--gold); }
+#game-leave-btn.hidden { display: none; }
+
+/* The toast is centred near the top, and the HUD card's right edge reaches
+   past centre on a phone — so in game mode a toast lands squarely on the
+   Exit game button. Drop it below the card while a game is on. */
+#app.in-game #toast { top: calc(300px + var(--safe-top)); }
+
 #hud-top {
   display: flex;
   align-items: center;
@@ -274,18 +299,31 @@ body {
 }
 
 #hud-exit {
+  /* The only way out that is always on screen, so it has to read as a
+     control rather than a caption. Muted grey at 10px on a dark card was
+     invisible in practice — a player found game mode and could not find
+     the way back out of it. */
   flex: none;
+  position: relative;
   font-family: var(--display);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted);
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--gold);
+  background: rgba(232, 197, 106, 0.1);
+  border: 1px solid rgba(232, 197, 106, 0.45);
   border-radius: 999px;
-  padding: 4px 10px;
+  padding: 6px 12px;
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+/* Grow the tap target to roughly Apple's 44pt minimum without growing the
+   pill itself — a 21px-tall button is a fiddly thing to hit on a phone. */
+#hud-exit::after {
+  content: '';
+  position: absolute;
+  inset: -12px -10px;
 }
 
 #hud-exit:hover { color: #ff9aa8; border-color: var(--blood); background: rgba(224, 80, 106, 0.08); }
@@ -944,7 +982,7 @@ body {
   #game-hud #hud-score { font-size: 30px; }
   /* Tighter tracking so "Round 1 of 10" stays on one line beside Exit. */
   #game-hud #hud-headline { font-size: 9.5px; letter-spacing: 0.1em; }
-  #game-hud #hud-exit { padding: 3px 8px; font-size: 9.5px; }
+  #game-hud #hud-exit { padding: 5px 10px; font-size: 10.5px; }
 
   .swatch-grid { grid-template-columns: repeat(5, 1fr); }
 }

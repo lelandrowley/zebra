@@ -72,6 +72,7 @@ export function initUI(state, handlers) {
     tabsNav: $('#tabs'),
     gameModeEntry: $('#game-mode-entry'),
     playBack: $('#play-back-btn'),
+    gameLeave: $('#game-leave-btn'),
     pagePlay: $('#page-play'),
     games: $('#games'),
   };
@@ -116,6 +117,9 @@ export function initUI(state, handlers) {
   // shows #page-play, closable only via the explicit Back button.
 
   function openGameMode() {
+    // Refresh first: this page carries the "Leave game" button, whose
+    // visibility depends on whether a game is running.
+    renderGames();
     document.querySelectorAll('.tab-page').forEach((p) => {
       if (p !== els.pagePlay) p.classList.remove('active');
     });
@@ -167,6 +171,7 @@ export function initUI(state, handlers) {
   // ---- games -----------------------------------------------------------
 
   function renderGames() {
+    els.gameLeave.classList.toggle('hidden', !state.gameId);
     els.games.innerHTML = '';
     for (const g of GAMES) {
       const active = state.gameId === g.id;
@@ -230,6 +235,13 @@ export function initUI(state, handlers) {
   }
 
   els.hudExit.addEventListener('click', () => handlers.onGameLeave());
+  // The same exit, offered where the game was switched ON. Someone who
+  // started a game from the panel looks for the off switch in the panel.
+  els.gameLeave.addEventListener('click', () => {
+    handlers.onGameLeave();
+    closeGameMode();
+    closePanel();
+  });
   els.hudAgain.addEventListener('click', () => handlers.onGameReset());
 
   function bump(type, delta) {

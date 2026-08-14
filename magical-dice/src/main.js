@@ -189,6 +189,8 @@ function boot() {
   }
 
   function refreshGameHUD() {
+    // Lets CSS keep transient chrome (the toast) clear of the HUD card.
+    document.getElementById('app').classList.toggle('in-game', !!game);
     const def = state.gameId ? gameById(state.gameId) : null;
     ui.renderGameHUD(game && def ? {
       name: def.name,
