@@ -64,6 +64,7 @@ export function initUI(state, handlers) {
     sigil: $('#sigil'),
     sound: $('#opt-sound'),
     hideRoll: $('#opt-hide-roll'),
+    zoom: $('#opt-zoom'),
     toast: $('#toast'),
     modeIndicator: $('#mode-indicator'),
     scoreboard: $('#scoreboard'),
@@ -382,6 +383,16 @@ export function initUI(state, handlers) {
   }
   applyRollVisibility();
 
+  // Zoom slider and the pinch gesture are two views of one value, so each
+  // has to reflect the other — pinch moves the slider, slider moves the camera.
+  els.zoom.value = String(Math.round((state.zoom ?? 1) * 100));
+  els.zoom.addEventListener('input', () => {
+    handlers.onZoom(Number(els.zoom.value) / 100, { fromSlider: true });
+  });
+  function syncZoomSlider(z) {
+    els.zoom.value = String(Math.round(z * 100));
+  }
+
   els.hideRoll.checked = state.hideRoll;
   els.hideRoll.addEventListener('change', () => {
     state.hideRoll = els.hideRoll.checked;
@@ -557,9 +568,74 @@ export function initUI(state, handlers) {
       handlers.onRoll();
     }
   });
-  $('#scene').addEventListener('pointerdown', (e) => {
-    if (e.isPrimary) handlers.onRoll();
+  // Tap the tray to roll — but only a real tap. Rolling on pointerdown used
+  // to be fine when a tap was the only gesture the tray understood; now a
+  // pinch starts with a finger landing on it, and firing a roll under the
+  // player's fingers as they zoom is maddening. So: roll on pointer UP, and
+  // only if this was one finger that stayed put and no second finger arrived.
+  const TAP_SLOP = 12;     // px of travel still considered "did not move"
+  const TAP_TIME = 600;    // ms — a long press is not a tap either
+  const scene = $('#scene');
+  let tap = null;
+
+  scene.addEventListener('pointerdown', (e) => {
+    if (!e.isPrimary) { tap = null; return; }   // a second finger cancels it
+    tap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() };
   });
+  scene.addEventListener('pointermove', (e) => {
+    if (!tap || e.pointerId !== tap.id) return;
+    if (Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > TAP_SLOP) tap = null;
+  });
+  const cancelTap = () => { tap = null; };
+  scene.addEventListener('pointercancel', cancelTap);
+  scene.addEventListener('pointerleave', cancelTap);
+  scene.addEventListener('pointerup', (e) => {
+    if (!tap || e.pointerId !== tap.id) return;
+    const moved = Math.hypot(e.clientX - tap.x, e.clientY - tap.y);
+    const held = performance.now() - tap.t;
+    tap = null;
+    if (moved <= TAP_SLOP && held <= TAP_TIME) handlers.onRoll();
+  });
+
+  // ---- pinch / wheel zoom --------------------------------------------------
+  // Two fingers on the tray, or a trackpad pinch, which macOS reports as a
+  // wheel event with ctrlKey set. Cosmetic only: it moves the camera and
+  // nothing else, so it never touches the fate stream or the physics step.
+  const active = new Map();
+  let pinchStart = 0;
+  let pinchZoom = 1;
+
+  const spread = () => {
+    const [a, b] = [...active.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
+
+  scene.addEventListener('pointerdown', (e) => {
+    active.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (active.size === 2) {
+      tap = null;                    // definitively a pinch, never a roll
+      pinchStart = spread();
+      pinchZoom = handlers.getZoom();
+    }
+  });
+  scene.addEventListener('pointermove', (e) => {
+    if (!active.has(e.pointerId)) return;
+    active.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (active.size === 2 && pinchStart > 0) {
+      handlers.onZoom(pinchZoom * (spread() / pinchStart));
+    }
+  });
+  const dropPointer = (e) => { active.delete(e.pointerId); if (active.size < 2) pinchStart = 0; };
+  scene.addEventListener('pointerup', dropPointer);
+  scene.addEventListener('pointercancel', dropPointer);
+  scene.addEventListener('pointerleave', dropPointer);
+
+  scene.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    // Trackpad pinch arrives as ctrl+wheel; a plain wheel zooms more gently.
+    const step = e.ctrlKey ? 0.01 : 0.0022;
+    handlers.onZoom(handlers.getZoom() * Math.exp(-e.deltaY * step));
+  }, { passive: false });
 
   function setRolling(rolling) {
     els.rollBtn.classList.toggle('rolling', rolling);
@@ -645,5 +721,6 @@ export function initUI(state, handlers) {
     drawTypePreview,
     totalDice,
     renderGameHUD,
+    syncZoomSlider,
   };
 }

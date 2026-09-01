@@ -48,6 +48,7 @@ const defaults = () => ({
   sound: true,
   wisps: false,
   hideRoll: false,
+  zoom: 1,
   gameId: null,
   players: { count: 1, names: defaultPlayerNames() },
 });
@@ -62,6 +63,7 @@ function loadState() {
       loadout: { ...d.loadout, ...(raw.loadout ?? {}) },
       typo: { ...d.typo, ...(raw.typo ?? {}) },
       seeds: Array.isArray(raw.seeds) && raw.seeds.length === 3 ? raw.seeds : d.seeds,
+      zoom: clamp(Number(raw.zoom) || d.zoom, 0.6, 2.0),
       players: {
         count: clamp(Number(raw.players?.count) || d.players.count, 1, MAX_PLAYERS),
         names: padNames(raw.players?.names ?? d.players.names),
@@ -103,6 +105,7 @@ function boot() {
 
   const state = loadState();
   view.setWisps(state.wisps);
+  view.setZoom(state.zoom);
   const physics = createPhysics();
   const fate = new Fate();
   fate.weave(...state.seeds);
@@ -113,6 +116,7 @@ function boot() {
   let quietRoll = false;   // the welcome pour: settle silently, no verdict
   let rollDeadlineStep = 0; // in sim steps, so slow devices stay deterministic
   let chargeUntil = 0;
+  let zoomSaveTimer = null;
   let lastClack = 0;
   const activeChips = [];
   const chipAnchor = new THREE.Vector3();
@@ -383,6 +387,16 @@ function boot() {
       ui.toast('The thread is rewoven. Your fate begins anew ✦');
       throwAll({ quiet: true, power: 0.55 });
     },
+    getZoom: () => view.getZoom(),
+    onZoom(z, { fromSlider = false } = {}) {
+      view.setZoom(z);
+      const applied = view.getZoom();          // clamped by the scene
+      state.zoom = applied;
+      if (!fromSlider) ui.syncZoomSlider(applied);
+      // A pinch fires many times a second; only persist once it settles.
+      clearTimeout(zoomSaveTimer);
+      zoomSaveTimer = setTimeout(() => saveState(state), 250);
+    },
     onSoundToggle() {
       saveState(state);
       audio.setMuted(!state.sound);
@@ -391,6 +405,7 @@ function boot() {
     onWispsToggle() {
       saveState(state);
       view.setWisps(state.wisps);
+  view.setZoom(state.zoom);
     },
     onHideRollToggle() {
       saveState(state);

@@ -9,6 +9,9 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { TRAY_RADIUS } from './physics.js';
 
+export const ZOOM_MIN = 0.6;
+export const ZOOM_MAX = 2.0;
+
 const RUNES = 'ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟᛝ';
 
 function canvasOf(size, draw) {
@@ -357,6 +360,12 @@ export function createScene(canvas) {
   let rollingTarget = 0;
   let framing = 0; // eases 0 (full) .. 1 (compact) — see setFraming()
   let framingTarget = 0;
+  // Zoom scales the camera's distance from what it is looking at, so it
+  // composes with framing instead of fighting it: framing decides WHERE the
+  // camera sits, zoom decides how far along that line. Eased for the same
+  // reason — a pinch that snapped would feel broken.
+  let zoom = 1;
+  let zoomTarget = 1;
   let bloomOn = quality !== 'low';
   let slowFrames = 0;
   let wispsOn = true;
@@ -382,11 +391,15 @@ export function createScene(canvas) {
     rolling += (rollingTarget - rolling) * Math.min(1, dt * 4);
     framing += (framingTarget - framing) * Math.min(1, dt * 4);
     camBase.lerpVectors(camBaseFull, camBaseCompact, framing);
+    zoom += (zoomTarget - zoom) * Math.min(1, dt * 6);
 
-    // camera parallax
+    // camera parallax, then zoom along the view ray. Dividing by zoom means
+    // a bigger number is closer, which is what "zoom in" has to mean to the
+    // slider and the pinch alike.
     camera.position.x = camBase.x + pointer.x * 1.05;
     camera.position.y = camBase.y - pointer.y * 0.55;
     camera.position.z = camBase.z;
+    camera.position.sub(lookAt).divideScalar(zoom).add(lookAt);
     camera.lookAt(lookAt);
 
     // rune ring: breathe, spin, surge while rolling
@@ -466,6 +479,9 @@ export function createScene(canvas) {
      *  shrunk the canvas — eases the camera back/up so the tray and rune
      *  ring stay fully framed at the shorter viewport. Never snaps. */
     setFraming(mode) { framingTarget = mode === 'compact' ? 1 : 0; },
+    /** 0.6 (far back) .. 2.0 (close in); 1 is the designed framing. */
+    setZoom(z) { zoomTarget = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(z) || 1)); },
+    getZoom() { return zoomTarget; },
     setWisps(on) {
       wispsOn = on;
       for (const w of wisps) w.group.visible = on;
