@@ -6,3 +6,6 @@ dist/
 
 # Throwaway harnesses: scripts/_*.mjs are scratch, never committed
 scripts/_*.mjs
+
+# Playtest screenshot scratch
+shots-mp/

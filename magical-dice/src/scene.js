@@ -156,7 +156,13 @@ export function createScene(canvas) {
   scene.add(makeBackdrop());
 
   const camera = new THREE.PerspectiveCamera(40, 2, 0.1, 220);
-  const camBase = new THREE.Vector3(0, 13.4, 10.6);
+  const camBaseFull = new THREE.Vector3(0, 13.4, 10.6);
+  // Pulled back and raised for game mode, where the scoreboard takes the
+  // lower band of the screen and the canvas shrinks vertically — keeps the
+  // whole tray and rune ring comfortably margined in the shorter viewport
+  // instead of crowding the frame edges. See setFraming() below.
+  const camBaseCompact = new THREE.Vector3(0, 17.3, 11.6);
+  const camBase = camBaseFull.clone();
   camera.position.copy(camBase);
   const lookAt = new THREE.Vector3(0, 0.2, -0.6);
   camera.lookAt(lookAt);
@@ -349,6 +355,8 @@ export function createScene(canvas) {
   // --- state + frame update -------------------------------------------------
   let rolling = 0; // eases 0..1
   let rollingTarget = 0;
+  let framing = 0; // eases 0 (full) .. 1 (compact) — see setFraming()
+  let framingTarget = 0;
   let bloomOn = quality !== 'low';
   let slowFrames = 0;
   let wispsOn = true;
@@ -372,6 +380,8 @@ export function createScene(canvas) {
   function update(dt, t) {
     resize();
     rolling += (rollingTarget - rolling) * Math.min(1, dt * 4);
+    framing += (framingTarget - framing) * Math.min(1, dt * 4);
+    camBase.lerpVectors(camBaseFull, camBaseCompact, framing);
 
     // camera parallax
     camera.position.x = camBase.x + pointer.x * 1.05;
@@ -452,6 +462,10 @@ export function createScene(canvas) {
     spawnSparks,
     burst(pos, colorHex) { spawnSparks(pos, colorHex, 26, 2.6, 2.6); },
     setRolling(b) { rollingTarget = b ? 1 : 0; },
+    /** 'full' for free rolling, 'compact' once the game scoreboard has
+     *  shrunk the canvas — eases the camera back/up so the tray and rune
+     *  ring stay fully framed at the shorter viewport. Never snaps. */
+    setFraming(mode) { framingTarget = mode === 'compact' ? 1 : 0; },
     setWisps(on) {
       wispsOn = on;
       for (const w of wisps) w.group.visible = on;

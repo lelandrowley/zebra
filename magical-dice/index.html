@@ -15,56 +15,65 @@
 </head>
 <body>
   <div id="app">
-    <canvas id="scene" aria-label="3D dice tray"></canvas>
-    <div id="vignette" aria-hidden="true"></div>
+    <div id="stage">
+      <canvas id="scene" aria-label="3D dice tray"></canvas>
+      <div id="vignette" aria-hidden="true"></div>
 
-    <!-- Projected per-die result chips live here -->
-    <div id="chips" aria-hidden="true"></div>
+      <!-- Projected per-die result chips live here -->
+      <div id="chips" aria-hidden="true"></div>
 
-    <header id="brand">
-      <h1><span class="star">✦</span> Fatewoven <span class="star">✦</span></h1>
-      <p class="tagline">dice of destiny</p>
-      <p id="mode-indicator" class="hidden"></p>
-    </header>
+      <header id="brand">
+        <h1><span class="star">✦</span> Fatewoven <span class="star">✦</span></h1>
+        <p class="tagline">dice of destiny</p>
+        <p id="mode-indicator" class="hidden"></p>
+      </header>
 
-    <!-- Total + crit banner -->
-    <div id="verdict" class="hidden" role="status" aria-live="polite">
-      <div id="verdict-flourish"></div>
-      <div id="verdict-total">—</div>
-      <div id="verdict-label">total</div>
+      <!-- Total + crit banner -->
+      <div id="verdict" class="hidden" role="status" aria-live="polite">
+        <div id="verdict-flourish"></div>
+        <div id="verdict-total">—</div>
+        <div id="verdict-label">total</div>
+      </div>
+
+      <!-- Roll controls -->
+      <div id="roll-bar">
+        <button id="roll-btn" title="Roll the dice (Space)">
+          <span class="rune-ring" aria-hidden="true"></span>
+          <span class="roll-label">Roll</span>
+        </button>
+        <div id="loadout-summary" aria-live="polite"></div>
+      </div>
+
+      <!-- Chronicle (history) -->
+      <aside id="chronicle" aria-label="Roll history">
+        <h2>Chronicle</h2>
+        <ol id="chronicle-list"></ol>
+      </aside>
     </div>
 
-    <!-- Game HUD — only shown while a game is active (Play mode) -->
-    <div id="game-hud" class="hidden" role="status" aria-live="polite">
+    <!-- Scoreboard — a full-width band, only shown while a game is active
+         (Play mode). Shrinking it or growing it reflows the tray above:
+         #stage loses the height, scene.js's resize() (reads
+         canvas.clientWidth/clientHeight every frame) picks that up. -->
+    <section id="scoreboard" class="hidden" role="status" aria-live="polite">
       <div id="hud-top">
-        <span id="hud-headline"></span>
+        <div id="hud-heading">
+          <span id="hud-headline"></span>
+          <span id="hud-sub"></span>
+        </div>
         <button id="hud-exit" type="button">Exit game</button>
       </div>
-      <div id="hud-score"></div>
-      <div id="hud-sub"></div>
-      <div id="hud-detail"></div>
-      <div id="hud-actions"></div>
-      <div id="hud-over" class="hidden">
-        <div id="hud-result-title"></div>
-        <div id="hud-result-detail"></div>
-        <button id="hud-again" type="button">Play again</button>
+      <div id="hud-body">
+        <p id="hud-detail"></p>
+        <div id="hud-players"></div>
+        <div id="hud-over" class="hidden">
+          <div id="hud-result-title"></div>
+          <div id="hud-result-detail"></div>
+          <div id="hud-standings"></div>
+          <button id="hud-again" type="button">Play again</button>
+        </div>
       </div>
-    </div>
-
-    <!-- Roll controls -->
-    <div id="roll-bar">
-      <button id="roll-btn" title="Roll the dice (Space)">
-        <span class="rune-ring" aria-hidden="true"></span>
-        <span class="roll-label">Roll</span>
-      </button>
-      <div id="loadout-summary" aria-live="polite"></div>
-    </div>
-
-    <!-- Chronicle (history) -->
-    <aside id="chronicle" aria-label="Roll history">
-      <h2>Chronicle</h2>
-      <ol id="chronicle-list"></ol>
-    </aside>
+    </section>
 
     <!-- Settings drawer -->
     <button id="panel-toggle" aria-expanded="true" aria-controls="panel" title="Open settings">
@@ -84,6 +93,8 @@
         <h4>Quick hands</h4>
         <div id="presets" class="chip-row"></div>
         <p class="hint" id="dice-cap-hint"></p>
+        <label class="row toggle-row"><input type="checkbox" id="opt-hide-roll" />
+          <span>Hide the roll button <em>— tap the tray to roll</em></span></label>
       </section>
 
       <section class="tab-page" id="page-style" role="tabpanel">
@@ -144,6 +155,18 @@
         <p class="hint">Pick a game to play it with the tray's real dice. Your own loadout returns when you leave the table.</p>
         <div id="games" class="game-list"></div>
         <button id="game-leave-btn" class="hidden" type="button">Leave game — back to rolling</button>
+      </section>
+
+      <!-- Player setup — reached after choosing a game, before it starts.
+           Not a real tab either; back returns to the game list. -->
+      <section class="tab-page" id="page-setup" role="tabpanel">
+        <button id="setup-back-btn" type="button" class="play-back">‹ Back</button>
+        <h3 id="setup-title">Set up the table</h3>
+        <p class="hint" id="setup-blurb"></p>
+        <h4>Players</h4>
+        <div id="setup-count" class="chip-row"></div>
+        <div id="setup-names"></div>
+        <button id="setup-start-btn" type="button">Start playing</button>
       </section>
     </aside>
 

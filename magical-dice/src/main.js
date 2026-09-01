@@ -9,7 +9,7 @@ import { Die } from './dice/die.js';
 import { STYLES, styleById, clearMaterialCache, tickInfusedGlow } from './dice/materials.js';
 import { typoKeyOf } from './dice/faces.js';
 import { DIE_TYPES, DIE_SCALE } from './dice/geometry.js';
-import { createGame, gameById } from './games.js';
+import { createGame, gameById, MAX_PLAYERS } from './games.js';
 import { Fate } from './rng.js';
 import * as audio from './audio.js';
 import { impactHaptic, resultHaptic, isNativeApp } from './haptics.js';
@@ -22,6 +22,23 @@ const STORE_KEY = 'fatewoven-v1';
 const storeGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
 const storeSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* opaque origin / private mode */ } };
 
+const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+
+// Slot 1 defaults to "You" (matches games.js's own single-player default),
+// the rest to "Player N" — the same fallback games.js uses for blank names,
+// so an untouched slot reads the same whether the default came from here or
+// from createGame() trimming an empty string later.
+const defaultPlayerNames = () => Array.from({ length: MAX_PLAYERS }, (_, i) => (i === 0 ? 'You' : `Player ${i + 1}`));
+
+// Every session keeps all MAX_PLAYERS name slots around (not just the
+// active `count`), so a table's names survive shrinking the player count
+// and coming back to it later.
+const padNames = (names) => {
+  const out = (Array.isArray(names) ? names : []).slice(0, MAX_PLAYERS);
+  while (out.length < MAX_PLAYERS) out.push(`Player ${out.length + 1}`);
+  return out;
+};
+
 const defaults = () => ({
   loadout: { d4: 1, d6: 1, d8: 1, d10: 1, d12: 1, d20: 1 },
   styleId: 'amethyst',
@@ -30,7 +47,9 @@ const defaults = () => ({
   seeds: ['', '', ''],
   sound: true,
   wisps: false,
+  hideRoll: false,
   gameId: null,
+  players: { count: 1, names: defaultPlayerNames() },
 });
 
 function loadState() {
@@ -43,6 +62,10 @@ function loadState() {
       loadout: { ...d.loadout, ...(raw.loadout ?? {}) },
       typo: { ...d.typo, ...(raw.typo ?? {}) },
       seeds: Array.isArray(raw.seeds) && raw.seeds.length === 3 ? raw.seeds : d.seeds,
+      players: {
+        count: clamp(Number(raw.players?.count) || d.players.count, 1, MAX_PLAYERS),
+        names: padNames(raw.players?.names ?? d.players.names),
+      },
     };
   } catch {
     return defaults();
@@ -189,16 +212,27 @@ function boot() {
   }
 
   function refreshGameHUD() {
-    // Lets CSS keep transient chrome (the toast) clear of the HUD card.
-    document.getElementById('app').classList.toggle('in-game', !!game);
+    const inGame = !!game;
+    // Lets CSS shrink #stage and hand the freed band to the scoreboard.
+    document.getElementById('app').classList.toggle('in-game', inGame);
+    // The shorter canvas that follows needs the camera pulled back to keep
+    // the tray and rune ring framed — see scene.js's setFraming().
+    view.setFraming(inGame ? 'compact' : 'full');
     const def = state.gameId ? gameById(state.gameId) : null;
-    ui.renderGameHUD(game && def ? {
+    if (!game || !def) {
+      ui.renderGameHUD(null);
+      return;
+    }
+    const players = game.players();
+    ui.renderGameHUD({
       name: def.name,
       status: game.status(),
-      actions: game.actions(),
+      players,
+      whoRolls: !game.isOver() && game.canRoll() ? game.whoRolls() : -1,
+      playerActions: players.map((p) => game.playerActions(p.index)),
       over: game.isOver(),
       result: game.isOver() ? game.result() : null,
-    } : null);
+    });
   }
 
   // A game's loadout (e.g. Pig's `{ d6: 1 }`) only lists the die types it
@@ -207,11 +241,11 @@ function boot() {
   // rest at 0, the same way a preset's loadout gets applied.
   const fullLoadout = (sparse) => Object.fromEntries(DIE_TYPES.map((t) => [t, sparse[t] ?? 0]));
 
-  function enterGame(id) {
+  function enterGame(id, names) {
     const def = gameById(id);
     if (!def) return;
     if (!game) preGameLoadout = { ...state.loadout };
-    game = createGame(id);
+    game = createGame(id, names);
     state.gameId = id;
     state.loadout = fullLoadout(game.loadout);
     applyLoadoutChange();
@@ -315,15 +349,17 @@ function boot() {
     onLoadoutChange() {
       applyLoadoutChange();
     },
-    onGameSelect(id) {
-      enterGame(id);
+    onGameStart(id, count, names) {
+      state.players = { count: clamp(count, 1, MAX_PLAYERS), names: padNames(names) };
+      saveState(state);
+      enterGame(id, state.players.names.slice(0, state.players.count));
     },
     onGameLeave() {
       leaveGame();
     },
-    onGameAction(id) {
+    onGameAction(id, i) {
       if (!game) return;
-      game.act(id);
+      game.act(id, i);
       refreshGameHUD();
     },
     onGameReset() {
@@ -356,6 +392,9 @@ function boot() {
       saveState(state);
       view.setWisps(state.wisps);
     },
+    onHideRollToggle() {
+      saveState(state);
+    },
   });
 
   ui.setSigil(fate.sigil());
@@ -366,7 +405,7 @@ function boot() {
   // but the game engine's own progress (score, round, pot…) is not, so this
   // is a fresh instance of whichever game was active, not a mid-round resume.
   if (state.gameId && gameById(state.gameId)) {
-    game = createGame(state.gameId);
+    game = createGame(state.gameId, state.players.names.slice(0, state.players.count));
     state.loadout = fullLoadout(game.loadout);
   }
 

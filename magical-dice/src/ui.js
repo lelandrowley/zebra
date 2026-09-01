@@ -4,11 +4,18 @@
 import { STYLES, styleById, styleSwatchURL } from './dice/materials.js';
 import { FONTS, INKS, fontById, MOTIFS, motifById } from './dice/faces.js';
 import { DIE_TYPES } from './dice/geometry.js';
-import { GAMES } from './games.js';
+import { GAMES, MAX_PLAYERS } from './games.js';
 
 const $ = (sel) => document.querySelector(sel);
 
 export const MAX_DICE = 12;
+
+// Player names are free text typed by whoever's running the table, so
+// anywhere they land inside an innerHTML template (scoreboard rows,
+// standings) needs escaping — everything else here uses textContent, which
+// is safe on its own.
+const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ESCAPES[c]);
 
 const DIE_ICONS = {
   d4: 'M50 8 L92 82 L8 82 Z',
@@ -56,18 +63,19 @@ export function initUI(state, handlers) {
     weave: $('#weave-btn'),
     sigil: $('#sigil'),
     sound: $('#opt-sound'),
+    hideRoll: $('#opt-hide-roll'),
     toast: $('#toast'),
     modeIndicator: $('#mode-indicator'),
-    gameHud: $('#game-hud'),
+    scoreboard: $('#scoreboard'),
     hudHeadline: $('#hud-headline'),
     hudExit: $('#hud-exit'),
-    hudScore: $('#hud-score'),
     hudSub: $('#hud-sub'),
     hudDetail: $('#hud-detail'),
-    hudActions: $('#hud-actions'),
+    hudPlayers: $('#hud-players'),
     hudOver: $('#hud-over'),
     hudResultTitle: $('#hud-result-title'),
     hudResultDetail: $('#hud-result-detail'),
+    hudStandings: $('#hud-standings'),
     hudAgain: $('#hud-again'),
     tabsNav: $('#tabs'),
     gameModeEntry: $('#game-mode-entry'),
@@ -75,6 +83,12 @@ export function initUI(state, handlers) {
     gameLeave: $('#game-leave-btn'),
     pagePlay: $('#page-play'),
     games: $('#games'),
+    pageSetup: $('#page-setup'),
+    setupBack: $('#setup-back-btn'),
+    setupBlurb: $('#setup-blurb'),
+    setupCount: $('#setup-count'),
+    setupNames: $('#setup-names'),
+    setupStart: $('#setup-start-btn'),
   };
 
   let toastTimer = null;
@@ -117,6 +131,7 @@ export function initUI(state, handlers) {
   // shows #page-play, closable only via the explicit Back button.
 
   function openGameMode() {
+    pendingGameId = null;
     // Refresh first: this page carries the "Leave game" button, whose
     // visibility depends on whether a game is running.
     renderGames();
@@ -129,7 +144,9 @@ export function initUI(state, handlers) {
   }
 
   function closeGameMode() {
+    pendingGameId = null;
     els.pagePlay.classList.remove('active');
+    els.pageSetup.classList.remove('active');
     const activeTab = document.querySelector('.tab.active') || document.querySelector('.tab');
     if (activeTab) document.getElementById(`page-${activeTab.dataset.tab}`)?.classList.add('active');
     els.tabsNav.classList.remove('hidden');
@@ -187,15 +204,84 @@ export function initUI(state, handlers) {
       if (active) {
         b.disabled = true;
       } else {
-        b.addEventListener('click', () => {
-          handlers.onGameSelect(g.id);
-          closeGameMode();
-          closePanel();
-        });
+        b.addEventListener('click', () => openSetup(g.id));
       }
       els.games.appendChild(b);
     }
   }
+
+  // ---- player setup ------------------------------------------------------
+  // Reached after picking a game, before it starts: how many are playing
+  // and what they're called. Edits here are a working copy only — nothing
+  // is persisted (or handed to main.js) until "Start playing" is pressed, so
+  // Back can discard them cleanly.
+
+  let pendingGameId = null;
+  let setupCount = 1;
+  let setupNames = [];
+
+  function openSetup(id) {
+    pendingGameId = id;
+    setupCount = Math.min(MAX_PLAYERS, Math.max(1, state.players.count));
+    setupNames = state.players.names.slice();
+    const def = GAMES.find((g) => g.id === id);
+    els.setupBlurb.textContent = def
+      ? `Set the table for ${def.name} — everyone plays with the tray's real dice.`
+      : '';
+    renderSetupCount();
+    renderSetupNames();
+    document.querySelectorAll('.tab-page').forEach((p) => p.classList.remove('active'));
+    els.pageSetup.classList.add('active');
+  }
+
+  function renderSetupCount() {
+    els.setupCount.innerHTML = '';
+    for (let n = 1; n <= MAX_PLAYERS; n++) {
+      const b = document.createElement('button');
+      b.className = 'chip' + (n === setupCount ? ' active' : '');
+      b.textContent = String(n);
+      b.addEventListener('click', () => {
+        setupCount = n;
+        renderSetupCount();
+        renderSetupNames();
+      });
+      els.setupCount.appendChild(b);
+    }
+  }
+
+  function renderSetupNames() {
+    els.setupNames.innerHTML = '';
+    for (let i = 0; i < setupCount; i++) {
+      const label = document.createElement('label');
+      label.className = 'row col';
+      label.textContent = `Player ${i + 1}`;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.autocomplete = 'off';
+      input.placeholder = i === 0 ? 'You' : `Player ${i + 1}`;
+      input.value = setupNames[i] ?? '';
+      input.addEventListener('input', () => { setupNames[i] = input.value; });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') els.setupStart.click();
+        e.stopPropagation();
+      });
+      label.appendChild(input);
+      els.setupNames.appendChild(label);
+    }
+  }
+
+  els.setupBack.addEventListener('click', () => {
+    pendingGameId = null;
+    els.pageSetup.classList.remove('active');
+    els.pagePlay.classList.add('active');
+  });
+
+  els.setupStart.addEventListener('click', () => {
+    if (!pendingGameId) return;
+    handlers.onGameStart(pendingGameId, setupCount, setupNames.slice());
+    closeGameMode();
+    closePanel();
+  });
 
   function renderGameHUD(view) {
     renderLoadout();
@@ -205,32 +291,55 @@ export function initUI(state, handlers) {
     if (view) els.modeIndicator.textContent = `Playing · ${view.name}`;
 
     if (!view) {
-      els.gameHud.classList.add('hidden');
+      els.scoreboard.classList.add('hidden');
       return;
     }
-    els.gameHud.classList.remove('hidden');
-    const { status, actions, over, result } = view;
+    els.scoreboard.classList.remove('hidden');
+    const { status, players, whoRolls, playerActions, over, result } = view;
 
     els.hudHeadline.textContent = status.headline;
-    els.hudScore.textContent = status.score;
     els.hudSub.textContent = status.sub || '';
     els.hudDetail.textContent = status.detail || '';
 
-    els.hudActions.innerHTML = '';
-    for (const a of actions) {
-      const b = document.createElement('button');
-      b.className = 'hud-action-btn' + (a.primary ? ' primary' : '');
-      b.textContent = a.label;
-      b.disabled = !!a.disabled;
-      b.addEventListener('click', () => handlers.onGameAction(a.id));
-      els.hudActions.appendChild(b);
-    }
-    els.hudActions.classList.toggle('hidden', over || actions.length === 0);
+    els.hudPlayers.innerHTML = '';
+    players.forEach((p, i) => {
+      const row = document.createElement('div');
+      row.className = 'hud-player' + (p.active ? ' active' : '') + (p.out ? ' out' : '');
+      const rollsNow = !over && i === whoRolls;
+      row.innerHTML = `
+        <div class="hp-who">
+          ${rollsNow ? '<span class="hp-rolls-badge">🎲 rolling now</span>' : ''}
+          <span class="hp-name">${esc(p.name)}</span>
+          ${p.note ? `<span class="hp-note">${esc(p.note)}</span>` : ''}
+        </div>
+        <div class="hp-score">${p.score}</div>`;
+      const actions = playerActions[i] || [];
+      if (!over && actions.length) {
+        const wrap = document.createElement('div');
+        wrap.className = 'hp-actions';
+        for (const a of actions) {
+          const btn = document.createElement('button');
+          btn.className = 'hud-action-btn' + (a.primary ? ' primary' : '');
+          btn.textContent = a.label;
+          btn.disabled = !!a.disabled;
+          btn.addEventListener('click', () => handlers.onGameAction(a.id, p.index));
+          wrap.appendChild(btn);
+        }
+        row.appendChild(wrap);
+      }
+      els.hudPlayers.appendChild(row);
+    });
 
     els.hudOver.classList.toggle('hidden', !over);
     if (over && result) {
       els.hudResultTitle.textContent = result.title;
       els.hudResultDetail.textContent = result.detail;
+      els.hudStandings.innerHTML = result.standings.map((s) => `
+        <div class="standing-row">
+          <span class="sr-rank">#${s.rank}</span>
+          <span class="sr-name">${esc(s.name)}</span>
+          <span class="sr-score">${s.score}</span>
+        </div>`).join('');
     }
   }
 
@@ -265,13 +374,28 @@ export function initUI(state, handlers) {
     els.presets.appendChild(b);
   }
 
+  // Hiding the big Roll button is safe because the tray itself already
+  // rolls on tap (see the #scene pointerdown listener below) — this just
+  // toggles which affordance is on screen, in both free rolling and games.
+  function applyRollVisibility() {
+    els.rollBtn.classList.toggle('hidden', state.hideRoll);
+  }
+  applyRollVisibility();
+
+  els.hideRoll.checked = state.hideRoll;
+  els.hideRoll.addEventListener('change', () => {
+    state.hideRoll = els.hideRoll.checked;
+    applyRollVisibility();
+    renderSummary();
+    handlers.onHideRollToggle();
+  });
+
   function renderSummary() {
     const parts = DIE_TYPES.filter((t) => state.loadout[t] > 0)
       .map((t) => (state.loadout[t] > 1 ? `${state.loadout[t]}${t}` : t));
     const styleName = state.motley ? 'Motley' : styleById(state.styleId).name;
-    els.summary.textContent = parts.length
-      ? `${parts.join(' + ')} — ${styleName}`
-      : 'choose your dice';
+    const base = parts.length ? `${parts.join(' + ')} — ${styleName}` : 'choose your dice';
+    els.summary.textContent = state.hideRoll ? `${base} · tap the tray to roll` : base;
   }
 
   // ---- styles --------------------------------------------------------------
