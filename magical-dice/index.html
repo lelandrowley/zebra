@@ -57,11 +57,19 @@
          canvas.clientWidth/clientHeight every frame) picks that up. -->
     <section id="scoreboard" class="hidden" role="status" aria-live="polite">
       <div id="hud-top">
-        <div id="hud-heading">
-          <span id="hud-headline"></span>
-          <span id="hud-sub"></span>
+        <div class="hud-top-row">
+          <div id="hud-heading">
+            <span id="hud-headline"></span>
+            <span id="hud-sub"></span>
+          </div>
+          <button id="hud-exit" type="button">Exit game</button>
         </div>
-        <button id="hud-exit" type="button">Exit game</button>
+        <!-- The amount at stake. Lives in the fixed header, never the
+             scrolling body, so it stays on screen with a full table. -->
+        <div id="hud-stake" class="hidden">
+          <span id="hud-stake-value"></span>
+          <span id="hud-stake-label"></span>
+        </div>
       </div>
       <div id="hud-body">
         <p id="hud-detail"></p>

@@ -71,6 +71,9 @@ export function initUI(state, handlers) {
     hudHeadline: $('#hud-headline'),
     hudExit: $('#hud-exit'),
     hudSub: $('#hud-sub'),
+    hudStake: $('#hud-stake'),
+    hudStakeValue: $('#hud-stake-value'),
+    hudStakeLabel: $('#hud-stake-label'),
     hudDetail: $('#hud-detail'),
     hudPlayers: $('#hud-players'),
     hudOver: $('#hud-over'),
@@ -300,6 +303,15 @@ export function initUI(state, handlers) {
 
     els.hudHeadline.textContent = status.headline;
     els.hudSub.textContent = status.sub || '';
+
+    // The stake, big. Games with nothing accumulating (Chicago) pass null and
+    // the block collapses rather than showing a meaningless zero.
+    const stake = status.stake;
+    els.hudStake.classList.toggle('hidden', !stake);
+    if (stake) {
+      els.hudStakeValue.textContent = String(stake.value);
+      els.hudStakeLabel.textContent = stake.label;
+    }
     els.hudDetail.textContent = status.detail || '';
 
     els.hudPlayers.innerHTML = '';

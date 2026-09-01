@@ -281,10 +281,44 @@ body {
 #hud-top {
   flex: none;
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px calc(20px + var(--safe-right)) 10px calc(20px + var(--safe-left));
+}
+
+.hud-top-row {
+  display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
-  padding: 14px calc(20px + var(--safe-right)) 10px calc(20px + var(--safe-left));
+}
+
+/* The stake: the one number the whole table is deciding about, so it is the
+   biggest thing on the board — bigger than any player's score. */
+#hud-stake {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+#hud-stake.hidden { display: none; }
+
+#hud-stake-value {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(38px, 9vw, 54px);
+  line-height: 1;
+  color: var(--gold-bright);
+  text-shadow: 0 0 26px rgba(232, 197, 106, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+#hud-stake-label {
+  font-family: var(--display);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 #hud-heading { display: flex; flex-direction: column; gap: 3px; min-width: 0; }

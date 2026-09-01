@@ -22,7 +22,9 @@
 //   game.onRoll(values)     feed settled faces (array of numbers)
 //   game.playerActions(i)   [{ id, label, primary, disabled }] for that player
 //   game.act(id, i)         run player i's button
-//   game.status()           { headline, detail, sub }
+//   game.status()           { headline, detail, sub, stake }
+//                           stake: { value, label } | null — the amount
+//                           currently at risk, shown big on the board
 //   game.isOver()
 //   game.result()           { title, detail, standings: [{ name, score, rank }] }
 //   game.reset()
@@ -139,6 +141,9 @@ class Pig extends Rotating {
       headline: this.over ? 'Complete' : `${this.names[this.current]} to roll`,
       detail: this.msg,
       sub: this.over ? 'final' : `first to ${this.TARGET} · turn ${this.round}`,
+      // The number the decision is actually about — shown big, so nobody has
+      // to read it off a button to decide whether to push their luck.
+      stake: this.over ? null : { value: this.turnTotal, label: 'this turn' },
     };
   }
 
@@ -207,6 +212,7 @@ class Chicago extends Rotating {
       headline: this.over ? 'Complete' : `${this.names[this.current]} chases ${this.target}`,
       detail: this.msg,
       sub: this.over ? 'final' : `target ${this.target} of 12`,
+      stake: null,   // nothing accumulates in Chicago; the target is the story
     };
   }
 
@@ -338,7 +344,8 @@ class BankIt {
     return {
       headline: this.over ? 'Complete' : `${this.names[this.roller]} to roll`,
       detail: this.msg,
-      sub: this.over ? 'final' : `round ${this.round} of ${this.ROUNDS} · pot ${this.pot}${safe ? ' · sevens pay' : ''}`,
+      sub: this.over ? 'final' : `round ${this.round} of ${this.ROUNDS}${safe ? ' · sevens pay' : ''}`,
+      stake: this.over ? null : { value: this.pot, label: 'in the pot' },
     };
   }
 

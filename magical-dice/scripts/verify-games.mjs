@@ -192,7 +192,7 @@ section('pig: 3-player rotation — bust passes, hold passes, round wraps only a
     { index: 1, name: 'Bo', score: 102, active: false, out: false, note: '' },
     { index: 2, name: 'Cal', score: 7, active: false, out: false, note: '' },
   ]);
-  checkDeepEqual('status() on game-over', g.status(), { headline: 'Complete', detail: 'Bo reaches 102.', sub: 'final' });
+  checkDeepEqual('status() on game-over', g.status(), { headline: 'Complete', detail: 'Bo reaches 102.', sub: 'final', stake: null });
   checkDeepEqual('result() ranks Bo first, unique winner', g.result(), {
     title: 'Bo wins with 102',
     detail: 'Race to 100.',
@@ -311,7 +311,7 @@ section('pig: single player reproduces the classic solo game exactly');
   checkState('6+6+6+6+5+2 -> turnTotal 31', g, { turnTotal: 31 });
   g.act('hold', 0); // scores 69+31 = 100 exactly -> over. round frozen at 5 (no pass on a win).
   checkState('hold banks 31 -> EXACTLY 100, game over, round stays 5', g, { scores: [100], turnTotal: 0, over: true, round: 5 });
-  checkDeepEqual('solo status()', g.status(), { headline: 'Complete', detail: 'You reaches 100.', sub: 'final' });
+  checkDeepEqual('solo status()', g.status(), { headline: 'Complete', detail: 'You reaches 100.', sub: 'final', stake: null });
   checkDeepEqual('solo result() — unified format, "N points" (no per-turn count like the old solo-only suite)', g.result(), {
     title: '100 points',
     detail: 'Race to 100.',
@@ -471,7 +471,7 @@ section('chicago: single player reproduces the classic solo game exactly');
   }
   checkEqual('solo score is the sum of hit targets (58)', g.scores[0], 58);
   checkState('solo game over after 11 rolls, target stuck at 12', g, { over: true, target: 12, scores: [58] });
-  checkDeepEqual('solo status()', g.status(), { headline: 'Complete', detail: 'Eleven targets, all done.', sub: 'final' });
+  checkDeepEqual('solo status()', g.status(), { headline: 'Complete', detail: 'Eleven targets, all done.', sub: 'final', stake: null });
   checkDeepEqual('solo result() — unified format', g.result(), {
     title: '58 points',
     detail: 'Eleven targets.',
@@ -590,7 +590,7 @@ section('bank it: round 10 — a bust still ends the GAME (not just the round)')
   // The bust message ("Seven. Everyone still in loses the pot.") is
   // overwritten by _endRound's final-round message — confirm the ACTUAL
   // final text, not the intermediate one.
-  checkDeepEqual('status() on a busted final round', g.status(), { headline: 'Complete', detail: 'The last round ends with the pot lost.', sub: 'final' });
+  checkDeepEqual('status() on a busted final round', g.status(), { headline: 'Complete', detail: 'The last round ends with the pot lost.', sub: 'final', stake: null });
   checkDeepEqual('result() — a 2-way tie for first (Amy/Bo at 577), Cal alone at 748 wins', g.result(), {
     title: 'Cal wins with 748',
     detail: '10 rounds of nerve.',
@@ -623,7 +623,7 @@ section('bank it: round 10 — banking still ends the GAME, and a double-bank ne
 
   g.act('bank', 2); // Cal, the last one in, banks -> round ends -> round(10)>=ROUNDS -> GAME OVER
   checkState('Cal (last in) banks -> 818, round 10 complete -> GAME OVER', g, { scores: [647, 647, 818], round: 10, pot: 0, over: true });
-  checkDeepEqual('status() on a banked-out final round', g.status(), { headline: 'Complete', detail: 'That was the last round.', sub: 'final' });
+  checkDeepEqual('status() on a banked-out final round', g.status(), { headline: 'Complete', detail: 'That was the last round.', sub: 'final', stake: null });
   checkDeepEqual('result() — Cal wins outright', g.result(), {
     title: 'Cal wins with 818',
     detail: '10 rounds of nerve.',
@@ -738,7 +738,7 @@ section('bank it: single player reproduces the classic solo game exactly');
   checkState('final round roll1-3 -> pot 84', g, { pot: 84, rolls: 3, over: false });
   g.onRoll([4, 3]); // roll4=7 -> bust, AND round 10 >= ROUNDS -> GAME OVER
   checkState('bust on round 10 ends the GAME', g, { scores: [668], pot: 0, round: 10, over: true });
-  checkDeepEqual('solo status() on a busted final round', g.status(), { headline: 'Complete', detail: 'The last round ends with the pot lost.', sub: 'final' });
+  checkDeepEqual('solo status() on a busted final round', g.status(), { headline: 'Complete', detail: 'The last round ends with the pot lost.', sub: 'final', stake: null });
   checkDeepEqual('solo result() — unified "N points" format', g.result(), {
     title: '668 points',
     detail: '10 rounds of nerve.',
@@ -759,7 +759,7 @@ section('bank it: single player — banking (not busting) also ends the game at 
   g.onRoll([3, 4]); // roll1=7 safe -> pot 70
   g.act('bank', 0); // 668+70=738, and since round 10 -> GAME ends
   checkState('banking on round 10 ends the GAME', g, { scores: [738], pot: 0, round: 10, over: true });
-  checkDeepEqual('solo status() on a banked-out final round', g.status(), { headline: 'Complete', detail: 'That was the last round.', sub: 'final' });
+  checkDeepEqual('solo status() on a banked-out final round', g.status(), { headline: 'Complete', detail: 'That was the last round.', sub: 'final', stake: null });
 
   g.onRoll([3, 4]); // would re-arm the pot pre-guard
   checkState('onRoll() after isOver() is a no-op', g, { pot: 0, rolls: 0, scores: [738], over: true });
@@ -996,6 +996,33 @@ function soakBankIt(n) {
     const avg = finals.reduce((a, b) => a + b, 0) / finals.length;
     console.log(`    per-player final score — min ${Math.min(...finals)}, max ${Math.max(...finals)}, avg ${avg.toFixed(1)} (policy: bank at pot>=120, or 12% chance per opportunity)`);
   }
+}
+
+// --- the stake shown big on the board -------------------------------------
+section('stake reported for the board');
+{
+  // Bank It: the stake is the pot, and a bank must NOT reduce it — two players
+  // can take the same pot, which is the whole shape of the game.
+  const g = createGame('bank', ['Ana', 'Bo', 'Cal']);
+  g.onRoll([4, 3]);                    // roll 1, seven in the safe zone -> pot 70
+  checkEqual('bank stake tracks the pot', g.status().stake.value, 70);
+  checkEqual('bank stake label', g.status().stake.label, 'in the pot');
+  g.act('bank', 1);                    // Bo takes 70
+  checkEqual('stake unchanged after a bank', g.status().stake.value, 70);
+  checkEqual('banker actually paid', g.players()[1].score, 70);
+
+  // Pig: the stake is the turn total at risk, and a 1 wipes it.
+  const pig = createGame('pig', ['Ana', 'Bo']);
+  pig.onRoll([5]); pig.onRoll([4]);
+  checkEqual('pig stake is the turn total', pig.status().stake.value, 9);
+  checkEqual('pig stake label', pig.status().stake.label, 'this turn');
+  pig.onRoll([1]);
+  checkEqual('pig stake wiped by a 1', pig.status().stake.value, 0);
+
+  // Chicago accumulates nothing, so it must offer no stake at all.
+  const chi = createGame('chicago', ['Ana', 'Bo']);
+  chi.onRoll([1, 1]);
+  checkEqual('chicago reports no stake', chi.status().stake, null);
 }
 
 soakPig(SOAK_N);
